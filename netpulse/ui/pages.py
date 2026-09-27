@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QButtonGroup, QCheckBox,
                                QTableWidgetItem, QVBoxLayout, QWidget)
 
 from .. import autostart
-from ..config import APP_VERSION
+from ..config import APP_VERSION, PROJECT_URL, is_packaged
 from ..collectors.net_system import vpn_active
 from ..db import DIRECT, VPN, floor_day
 from ..units import format_bytes, format_rate, format_when, truncate
@@ -413,6 +413,14 @@ class AppsPage(Page):
         self.restart_button = QPushButton("Restart as administrator")
         self.restart_button.clicked.connect(self._restart_elevated)
         banner_row.addWidget(self.restart_button)
+        # The Store build cannot elevate, so the button is not merely hidden
+        # by the note text below — it must never appear at all.
+        self.restart_button.setVisible(not is_packaged())
+        self.get_desktop_button = QPushButton("Get the desktop version")
+        self.get_desktop_button.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl(PROJECT_URL)))
+        self.get_desktop_button.setVisible(False)
+        banner_row.addWidget(self.get_desktop_button)
         self.content.addWidget(self.banner)
 
         row, self.group = pill_row(APP_PERIODS, self.set_period)
@@ -446,7 +454,10 @@ class AppsPage(Page):
         unit = self.settings.get("units", "auto")
         note = self.engine.per_app_note()
         self.banner.setVisible(bool(note))
-        self.restart_button.setVisible("administrator" in note)
+        packaged = is_packaged()
+        self.restart_button.setVisible(
+            not packaged and "administrator" in note)
+        self.get_desktop_button.setVisible(packaged and bool(note))
         if note:
             self.banner_text.setText(
                 note + "  Machine-wide totals on the other pages are unaffected.")
@@ -666,6 +677,30 @@ class SettingsPage(Page):
         self.per_app_check.toggled.connect(engine.enable_per_app)
         collection.add(self.per_app_check)
 
+        if is_packaged():
+            # Offering a switch that cannot do anything is worse than not
+            # offering it: the user toggles it, nothing changes, and they
+            # conclude the app is broken rather than restricted.
+            # blockSignals: unchecking must not write a settings change the
+            # user never made — their desktop install shares this file.
+            self.per_app_check.blockSignals(True)
+            self.per_app_check.setChecked(False)
+            self.per_app_check.blockSignals(False)
+            self.per_app_check.setEnabled(False)
+            self.per_app_check.setText(
+                "Track usage per application — not available in the Store build")
+            per_app_note = QLabel(
+                "Windows does not permit a Store app to start the kernel "
+                "trace this needs. The desktop version is the same program "
+                "without that restriction, is free, and its source is public: "
+                f'<a href="{PROJECT_URL}" style="color:{theme.DOWN};">'
+                f'{PROJECT_URL}</a>')
+            per_app_note.setObjectName("CardHint")
+            per_app_note.setWordWrap(True)
+            per_app_note.setOpenExternalLinks(True)
+            per_app_note.setContentsMargins(26, 0, 0, 6)
+            collection.add(per_app_note)
+
         self.files_check = QCheckBox("Log files that arrive in the watched folders")
         self.files_check.setChecked(settings.get("track_files", True))
         self.files_check.toggled.connect(
@@ -769,6 +804,7 @@ class SettingsPage(Page):
         self.autostart_check = QCheckBox("Start NetPulse when I sign in to Windows")
         self.autostart_check.setChecked(autostart.is_enabled())
         self.autostart_check.toggled.connect(self._toggle_autostart)
+        self.autostart_check.setEnabled(not is_packaged())
         behaviour.add(self.autostart_check)
 
         self.autostart_note = QLabel(autostart.describe())

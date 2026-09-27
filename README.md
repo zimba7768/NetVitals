@@ -64,6 +64,25 @@ table underneath.
 
 </details>
 
+## Two builds
+
+The version here is the full one. A **Microsoft Store** build also exists for
+people who would rather install from the Store and get updates automatically —
+it is the same program with one feature missing.
+
+| | This build | Store build |
+|---|---|---|
+| Totals, history, charts | yes | yes |
+| Direct / VPN split and the VPN tab | yes | yes |
+| File log and browser sources | yes | yes |
+| Live throughput, tray icon | yes | yes |
+| **Per-application volumes** | **yes** | no |
+
+Per-application figures come from a Windows kernel trace that requires
+administrator rights, and Windows does not allow Store apps to run elevated.
+That is a platform restriction rather than a choice: the Store build detects
+that it is packaged, says so on the Applications page, and links back here.
+
 ## Download
 
 **[Grab the latest `NetPulse.exe` from Releases](../../releases/latest)** — one
@@ -258,7 +277,7 @@ changes included.
 
 ```bash
 python -m pip install -r requirements.txt
-python -m unittest discover -s tests -v   # 163 tests
+python -m unittest discover -s tests -v   # 177 tests
 python -m pyflakes netpulse main.py tools tests
 ```
 
@@ -290,7 +309,7 @@ run.bat / run-as-admin.bat  launchers
 make-shortcut.bat / .ps1    Desktop shortcut with the app icon
 _find-python.bat            shared interpreter discovery
 netpulse/
-  config.py                 paths and persisted settings
+  config.py                 paths, settings, packaged-build detection
   units.py                  byte / rate / time formatting
   log.py                    small capped diagnostic log
   db.py                     SQLite schema, rollups, retention, queries

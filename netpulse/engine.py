@@ -12,7 +12,7 @@ from .collectors.net_etw import EtwNetCollector
 from .collectors.net_system import (DIRECT, VPN, SystemNetCollector,
                                     vpn_active)
 from .collectors.wanip import WanIpResolver
-from .config import data_dir
+from .config import data_dir, is_packaged
 from .log import RollingLog
 
 LIVE_WINDOW_SECONDS = 120
@@ -63,6 +63,13 @@ class Engine(QObject):
 
     def per_app_note(self) -> str:
         """Empty when healthy, otherwise a sentence explaining what is wrong."""
+        if is_packaged():
+            # Checked first: in a Store build the setting is irrelevant, and
+            # blaming the user's own settings for a platform restriction sends
+            # them looking for a switch that cannot help.
+            return ("Per-application volumes are not available in the "
+                    "Microsoft Store build — Windows does not let Store apps "
+                    "start the kernel trace this needs.")
         if not self.settings.get("track_per_app", True):
             return "Per-application tracking is switched off in Settings."
         if not self.etw.available:

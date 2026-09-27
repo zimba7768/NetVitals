@@ -1,9 +1,10 @@
-﻿Follow the public IP across network changes, and show the working
+﻿Add a Microsoft Store build that needs no elevation
 
-Each lookup now builds its own opener rather than reusing the one urllib
-caches per process, so a VPN connecting mid-session is no longer invisible.
-Adds a capped diagnostic log, a manual re-check, and tools that measure the
-direct/VPN split and compare interpreters.
+One codebase serves both: the app asks Windows at runtime whether it is
+packaged, and every path that depends on elevation or a writable install
+directory checks that first. The packaged build drops the per-application
+kernel trace, explains why in terms the user can act on, and links to the
+desktop build.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01AJhA3ima1RjyG9dZpap6xR

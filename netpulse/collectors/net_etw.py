@@ -24,6 +24,7 @@ import time
 from collections import defaultdict
 
 from ..autostart import is_admin
+from ..config import PROJECT_URL, is_packaged
 from .net_system import VPN, classify_adapter
 
 try:
@@ -91,6 +92,18 @@ class EtwNetCollector:
 
     # ------------------------------------------------------------------ start
     def start(self) -> bool:
+        if is_packaged():
+            # Checked before the platform test: a packaged build is Windows by
+            # definition, and this way the behaviour is exercisable off it.
+            # Telling a Store user to "run as administrator" would be advice
+            # they cannot act on — Windows does not permit a packaged app to
+            # elevate at all. Say what is true, and where to go instead.
+            self.reason = ("Per-application volumes are not available in the "
+                           "Microsoft Store build: Windows does not let Store "
+                           "apps start the kernel trace this needs. The "
+                           "desktop version does, and is free — "
+                           f"{PROJECT_URL}")
+            return False
         if not sys.platform.startswith("win"):
             self.reason = "Per-app tracking requires Windows."
             return False

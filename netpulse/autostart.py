@@ -23,6 +23,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from .config import is_packaged
+
 APP_KEY = "NetPulse"
 TASK_NAME = "NetPulse"
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
@@ -307,6 +309,14 @@ def is_enabled() -> bool:
 
 def describe() -> str:
     """One line for the Settings page describing what will happen at sign-in."""
+    if is_packaged():
+        # A packaged app cannot register a scheduled task or a Run key, and
+        # does not need to: Windows reads the startup task declared in the
+        # package manifest and puts the switch in its own settings, which is
+        # the only place a user can change it.
+        return ("Managed by Windows for Store installs — turn it on in "
+                "Task Manager › Startup apps, or Settings › Apps › Startup. "
+                "It starts without administrator rights, as all Store apps do.")
     mode = current_mode()
     if mode == MODE_TASK:
         if not task_matches_this_copy():
@@ -329,6 +339,12 @@ def describe() -> str:
 
 def set_enabled(enabled: bool) -> tuple[bool, str]:
     """Turn autostart on or off. Returns (success, message for the user)."""
+    # Checked before the platform test so the behaviour is exercisable off
+    # Windows: a packaged build is Windows by definition, but the tests are
+    # not.
+    if is_packaged():
+        return False, ("Windows controls this for Store installs. Open Task "
+                       "Manager › Startup apps and switch NetPulse on there.")
     if not IS_WINDOWS:
         return False, "Start with Windows is only available on Windows."
 

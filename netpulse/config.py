@@ -9,9 +9,60 @@ from pathlib import Path
 from typing import Any
 
 APP_NAME = "NetPulse"
-APP_VERSION = "1.1.11"
+APP_VERSION = "1.2.0"
 
 IS_WINDOWS = sys.platform.startswith("win")
+
+#: Where the full, unrestricted build lives. Shown wherever the Store build
+#: has to explain something it cannot do.
+PROJECT_URL = "https://github.com/zimba7768/Netpulse"
+
+#: Windows returns this from GetCurrentPackageFullName for a process that is
+#: not running from an installed package.
+_APPMODEL_ERROR_NO_PACKAGE = 15700
+
+_packaged: bool | None = None
+
+
+def is_packaged() -> bool:
+    """True when running from an MSIX package — i.e. the Microsoft Store build.
+
+    The Store build is the same code as the ordinary one; what differs is what
+    Windows will allow it to do. Rather than ship two builds that can drift
+    apart, it asks Windows at runtime what it is.
+
+    A packaged process runs at medium integrity with no way to elevate, so the
+    kernel trace behind per-application tracking cannot start, and the install
+    directory is read-only. Everything that depends on either asks here first.
+    """
+    global _packaged
+    if _packaged is not None:
+        return _packaged
+
+    override = os.environ.get("NETPULSE_PACKAGED")
+    if override is not None:
+        _packaged = override not in ("", "0", "false", "False")
+        return _packaged
+
+    if not IS_WINDOWS:
+        _packaged = False
+        return _packaged
+
+    try:
+        import ctypes
+        from ctypes import wintypes
+        length = wintypes.UINT(0)
+        # Asking with a zero-length buffer is the documented way to learn
+        # whether there is a package at all: "no package" is a distinct code
+        # from "your buffer is too small".
+        code = ctypes.windll.kernel32.GetCurrentPackageFullName(
+            ctypes.byref(length), None)
+        _packaged = code != _APPMODEL_ERROR_NO_PACKAGE
+    except Exception:
+        # An older Windows without the app-model API is, by definition, not
+        # running a packaged copy.
+        _packaged = False
+    return _packaged
 
 
 def data_dir() -> Path:

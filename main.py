@@ -17,7 +17,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon
 
-from netpulse.config import APP_NAME, APP_VERSION, Settings, data_dir, db_path
+from netpulse.config import (APP_NAME, APP_VERSION, Settings, data_dir,
+                             db_path, is_packaged)
 from netpulse.db import Database
 from netpulse.engine import Engine
 from netpulse.ui import theme
@@ -81,7 +82,12 @@ def main() -> int:
     # Only write when it is missing, or when asked for explicitly: rewriting
     # it on every launch left the source checkout permanently "modified".
     force = "--write-ico" in sys.argv
-    written = write_ico(icon_file) if force or not icon_file.exists() else icon_file
+    if is_packaged():
+        # A package's install directory is read-only, and the Store supplies
+        # the icon from the manifest anyway, so there is nothing to write.
+        written = icon_file
+    else:
+        written = write_ico(icon_file) if force or not icon_file.exists() else icon_file
     if force:
         print(f"Wrote {written}" if written
               else f"Could not write {icon_file}")
