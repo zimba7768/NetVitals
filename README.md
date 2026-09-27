@@ -277,7 +277,7 @@ changes included.
 
 ```bash
 python -m pip install -r requirements.txt
-python -m unittest discover -s tests -v   # 177 tests
+python -m unittest discover -s tests -v   # 187 tests
 python -m pyflakes netpulse main.py tools tests
 ```
 
@@ -307,6 +307,7 @@ main.py                     entry point, single-instance guard
 install.bat                 finds Python, installs dependencies
 run.bat / run-as-admin.bat  launchers
 make-shortcut.bat / .ps1    Desktop shortcut with the app icon
+push-update.bat             test, commit, push and tag in one step
 _find-python.bat            shared interpreter discovery
 netpulse/
   config.py                 paths, settings, packaged-build detection
