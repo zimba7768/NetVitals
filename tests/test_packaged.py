@@ -22,11 +22,11 @@ from PySide6.QtWidgets import QApplication
 
 _app = QApplication.instance() or QApplication([])
 
-from netpulse import autostart, config                  # noqa: E402
-from netpulse.config import PROJECT_URL, Settings       # noqa: E402
-from netpulse.db import Database                        # noqa: E402
-from netpulse.engine import Engine                      # noqa: E402
-from netpulse.ui import pages                           # noqa: E402
+from netvitals import autostart, config                  # noqa: E402
+from netvitals.config import PROJECT_URL, Settings       # noqa: E402
+from netvitals.db import Database                        # noqa: E402
+from netvitals.engine import Engine                      # noqa: E402
+from netvitals.ui import pages                           # noqa: E402
 
 
 class PackagedFlag:
@@ -43,21 +43,21 @@ class DetectionTests(unittest.TestCase):
 
     def test_an_ordinary_process_is_not_packaged(self) -> None:
         config._packaged = None
-        os.environ.pop("NETPULSE_PACKAGED", None)
+        os.environ.pop("NETVITALS_PACKAGED", None)
         self.assertFalse(config.is_packaged())
 
     def test_the_override_is_honoured_for_testing(self) -> None:
         config._packaged = None
-        os.environ["NETPULSE_PACKAGED"] = "1"
-        self.addCleanup(os.environ.pop, "NETPULSE_PACKAGED", None)
+        os.environ["NETVITALS_PACKAGED"] = "1"
+        self.addCleanup(os.environ.pop, "NETVITALS_PACKAGED", None)
         self.assertTrue(config.is_packaged())
 
     def test_a_falsey_override_means_not_packaged(self) -> None:
         for value in ("", "0", "false"):
             config._packaged = None
-            os.environ["NETPULSE_PACKAGED"] = value
+            os.environ["NETVITALS_PACKAGED"] = value
             self.assertFalse(config.is_packaged(), value)
-        os.environ.pop("NETPULSE_PACKAGED", None)
+        os.environ.pop("NETVITALS_PACKAGED", None)
 
     def test_the_answer_is_cached(self) -> None:
         config._packaged = True
@@ -87,7 +87,7 @@ class AutostartTests(unittest.TestCase):
 
 class UiTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.dir = tempfile.mkdtemp(prefix="netpulse-pkg-")
+        self.dir = tempfile.mkdtemp(prefix="netvitals-pkg-")
         self.db = Database(os.path.join(self.dir, f"n_{time.time_ns()}.db"))
         self.settings = Settings()
 

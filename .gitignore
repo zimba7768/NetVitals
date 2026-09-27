@@ -7,7 +7,7 @@ dist/
 .venv/
 venv/
 
-# NetPulse local state — machine specific, never commit
+# NetVitals local state — machine specific, never commit
 # (the commit message file is written to TEMP now, but this catches the habit)
 commit-msg.txt
 python-path.txt
@@ -15,7 +15,7 @@ python-path.txt
 *.db-wal
 *.db-shm
 settings.json
-netpulse-export.csv
+netvitals-export.csv
 
 # Editors / OS
 .vscode/

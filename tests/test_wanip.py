@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PySide6.QtCore import Qt
 
-from netpulse.collectors import wanip
+from netvitals.collectors import wanip
 
 
 class ParseTests(unittest.TestCase):
@@ -485,7 +485,7 @@ class TraceEndpointTests(unittest.TestCase):
             "ip=93.184.216.34\n"
             "ts=1756600000.123\n"
             "visit_scheme=https\n"
-            "uag=NetPulse/1.0\n"
+            "uag=NetVitals/1.0\n"
             "colo=LHR\n")
 
     def test_the_named_field_is_read(self) -> None:

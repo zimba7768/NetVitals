@@ -1,10 +1,10 @@
 @echo off
 setlocal EnableExtensions
-title NetPulse - build NetPulse.exe
+title NetVitals - build NetVitals.exe
 cd /d "%~dp0"
 
 echo.
-echo  Building NetPulse.exe
+echo  Building NetVitals.exe
 echo  =====================
 echo.
 
@@ -27,7 +27,7 @@ echo  Refreshing the icon...
 
 echo.
 echo  Running PyInstaller (this takes a minute or two)...
-"%PYEXE%" -m PyInstaller --noconfirm --clean netpulse.spec
+"%PYEXE%" -m PyInstaller --noconfirm --clean netvitals.spec
 if errorlevel 1 (
     echo.
     echo  The build failed - the output above says why.
@@ -37,9 +37,9 @@ if errorlevel 1 (
 
 echo.
 echo  =====================
-echo  Done: dist\NetPulse.exe
+echo  Done: dist\NetVitals.exe
 echo.
-for %%F in ("dist\NetPulse.exe") do echo  Size: %%~zF bytes
+for %%F in ("dist\NetVitals.exe") do echo  Size: %%~zF bytes
 echo.
 echo  That single file is the whole application - no Python needed on the
 echo  machine you copy it to. Windows SmartScreen will warn the first time

@@ -1,5 +1,5 @@
 @echo off
-rem Starts NetPulse elevated so the kernel network trace can be opened,
+rem Starts NetVitals elevated so the kernel network trace can be opened,
 rem which is what makes the per-application breakdown possible.
 cd /d "%~dp0"
 call "%~dp0_find-python.bat"

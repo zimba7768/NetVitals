@@ -77,7 +77,7 @@ class Engine(QObject):
         if self.etw.events_seen == 0 and time.time() - self.started_at > 45:
             return ("The trace session started but Windows has not delivered any "
                     "network events. Another tracing tool may be holding the "
-                    "session — restarting NetPulse usually clears it.")
+                    "session — restarting NetVitals usually clears it.")
         return ""
 
     def status_text(self) -> str:
@@ -101,7 +101,7 @@ class Engine(QObject):
         self.db.rollup(since=0)          # heal anything a previous crash left behind
         self.system.reset()
         self._stop.clear()
-        self._thread = threading.Thread(target=self._run, name="netpulse-engine", daemon=True)
+        self._thread = threading.Thread(target=self._run, name="netvitals-engine", daemon=True)
         self._thread.start()
         self.status_changed.emit(self.status_text())
 

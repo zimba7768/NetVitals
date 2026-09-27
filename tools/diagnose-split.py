@@ -2,7 +2,7 @@
 
     python tools/diagnose-split.py [seconds]
 
-Reads exactly what NetPulse reads, and shows its working: the per-adapter byte
+Reads exactly what NetVitals reads, and shows its working: the per-adapter byte
 deltas, the split derived from them, and what proportion of the physical
 adapter's traffic could not be accounted for by the tunnel.
 
@@ -19,10 +19,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from netpulse.collectors.net_system import (DIRECT, IGNORED, VPN,  # noqa: E402
+from netvitals.collectors.net_system import (DIRECT, IGNORED, VPN,  # noqa: E402
                                             SystemNetCollector,
                                             classify_adapter, vpn_active)
-from netpulse.units import format_bytes  # noqa: E402
+from netvitals.units import format_bytes  # noqa: E402
 
 try:
     import psutil
@@ -129,7 +129,7 @@ def main() -> int:
         return 1
 
     print("=" * 68)
-    print("NetPulse — direct / VPN split")
+    print("NetVitals — direct / VPN split")
     print("=" * 68)
     print()
     show_classification()

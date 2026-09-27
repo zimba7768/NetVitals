@@ -3,19 +3,20 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import sys
 import threading
 from pathlib import Path
 from typing import Any
 
-APP_NAME = "NetPulse"
-APP_VERSION = "1.2.1"
+APP_NAME = "NetVitals"
+APP_VERSION = "1.3.1"
 
 IS_WINDOWS = sys.platform.startswith("win")
 
 #: Where the full, unrestricted build lives. Shown wherever the Store build
 #: has to explain something it cannot do.
-PROJECT_URL = "https://github.com/zimba7768/Netpulse"
+PROJECT_URL = "https://github.com/zimba7768/NetVitals"
 
 #: Windows returns this from GetCurrentPackageFullName for a process that is
 #: not running from an installed package.
@@ -39,7 +40,7 @@ def is_packaged() -> bool:
     if _packaged is not None:
         return _packaged
 
-    override = os.environ.get("NETPULSE_PACKAGED")
+    override = os.environ.get("NETVITALS_PACKAGED")
     if override is not None:
         _packaged = override not in ("", "0", "false", "False")
         return _packaged
@@ -65,9 +66,59 @@ def is_packaged() -> bool:
     return _packaged
 
 
+#: What the application was called before 1.3.0. Its data folder still holds
+#: real history for anyone who used it, and a rename must not throw that away.
+FORMER_APP_NAME = "NetPulse"
+
+#: data_dir() is called often; the adoption check runs once per process.
+_adoption_checked = False
+
+
+def _former_data_dir() -> Path | None:
+    """Where the pre-rename version kept its data, if that folder exists."""
+    if os.environ.get("NETVITALS_DATA_DIR"):
+        return None                       # an explicit override owns the path
+    if IS_WINDOWS:
+        base = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
+        old = Path(base) / FORMER_APP_NAME
+    else:
+        old = Path.home() / ".local" / "share" / FORMER_APP_NAME.lower()
+    return old if old.is_dir() else None
+
+
+def _adopt_former_data(target: Path) -> None:
+    """Move a pre-rename data folder into place, once.
+
+    Renaming the application renames its data folder with it, which would
+    silently orphan every figure the user had collected — the app would look
+    brand new and their year of history would still be on disk, unreachable.
+    Nothing is deleted here: on any failure the old folder is left exactly as
+    it was, and the worst case is an empty start rather than a lost one.
+    """
+    former = _former_data_dir()
+    if former is None or former == target:
+        return
+    try:
+        if any(target.iterdir()):
+            return                        # already has data; nothing to adopt
+    except OSError:
+        return
+
+    for item in sorted(former.iterdir()):
+        destination = target / item.name.replace(
+            FORMER_APP_NAME.lower(), APP_NAME.lower())
+        if destination.exists():
+            continue
+        try:
+            shutil.copy2(item, destination) if item.is_file() else \
+                shutil.copytree(item, destination)
+        except OSError:
+            continue                      # keep whatever did come across
+
+
 def data_dir() -> Path:
     """Per-user writable directory for the database and settings."""
-    override = os.environ.get("NETPULSE_DATA_DIR")
+    override = os.environ.get("NETVITALS_DATA_DIR")
     if override:
         p = Path(override)
     elif IS_WINDOWS:
@@ -76,11 +127,18 @@ def data_dir() -> Path:
     else:  # dev / test on Linux or macOS
         p = Path.home() / ".local" / "share" / APP_NAME.lower()
     p.mkdir(parents=True, exist_ok=True)
+    global _adoption_checked
+    if not _adoption_checked:
+        # Once per run, and only when the folder is empty — which is the real
+        # condition, not "we just created it". An installer or a cleared
+        # folder would otherwise block the migration permanently.
+        _adoption_checked = True
+        _adopt_former_data(p)
     return p
 
 
 def db_path() -> Path:
-    return data_dir() / "netpulse.db"
+    return data_dir() / "netvitals.db"
 
 
 def settings_path() -> Path:

@@ -18,13 +18,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from netpulse.collectors import wanip           # noqa: E402
-from netpulse.log import NULL_LOG, RollingLog   # noqa: E402
+from netvitals.collectors import wanip           # noqa: E402
+from netvitals.log import NULL_LOG, RollingLog   # noqa: E402
 
 
 class RollingLogTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.dir = tempfile.mkdtemp(prefix="netpulse-log-")
+        self.dir = tempfile.mkdtemp(prefix="netvitals-log-")
         self.path = Path(self.dir) / "test.log"
 
     def tearDown(self) -> None:
@@ -80,7 +80,7 @@ class ResolverLoggingTests(unittest.TestCase):
     """The events that matter when reading a log after the fact."""
 
     def setUp(self) -> None:
-        self.dir = tempfile.mkdtemp(prefix="netpulse-rlog-")
+        self.dir = tempfile.mkdtemp(prefix="netvitals-rlog-")
         self.log = RollingLog(Path(self.dir) / "wanip.log")
         self.resolver = wanip.WanIpResolver(log=self.log)
         self._fetch = wanip.fetch_text

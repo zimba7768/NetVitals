@@ -4,7 +4,7 @@
 
 Runs the real WanIpResolver and prints every adapter change, every scheduled
 lookup and every provider result, so a VPN can be switched on and off while it
-watches. Nothing is written and nothing else in NetPulse is started.
+watches. Nothing is written and nothing else in NetVitals is started.
 """
 from __future__ import annotations
 
@@ -21,8 +21,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from netpulse.collectors import wanip  # noqa: E402
-from netpulse.collectors.wanip import (ENDPOINTS, WanIpResolver,  # noqa: E402
+from netvitals.collectors import wanip  # noqa: E402
+from netvitals.collectors.wanip import (ENDPOINTS, WanIpResolver,  # noqa: E402
                                        describe_error, fetch_text,
                                        network_fingerprint, parse_ip)
 
@@ -143,7 +143,7 @@ def windowed_twin() -> Path | None:
     all match on the executable. Two interpreters, two network paths, and no
     way to see it without running both.
     """
-    override = os.environ.get("NETPULSE_ALT_PYTHON")
+    override = os.environ.get("NETVITALS_ALT_PYTHON")
     if override:
         return Path(override)
     twin = Path(sys.executable).with_name("pythonw.exe")
@@ -188,7 +188,7 @@ def compare_interpreters(mine: str) -> int:
 
     print(f"Now the same lookup under {twin.name}, which is what the app runs.")
     print()
-    scratch = Path(tempfile.gettempdir()) / "netpulse-pythonw-check.txt"
+    scratch = Path(tempfile.gettempdir()) / "netvitals-pythonw-check.txt"
     try:
         subprocess.run([str(twin), os.path.abspath(__file__), "0",
                         "--out", str(scratch)], timeout=180, check=False)
@@ -228,7 +228,7 @@ def main() -> int:
         sys.stdout = open(OUT_FILE, "w", encoding="utf-8", buffering=1)
 
     print("=" * 74)
-    print("NetPulse — public IP diagnosis")
+    print("NetVitals — public IP diagnosis")
     print("=" * 74)
     print()
 

@@ -89,7 +89,7 @@ class VersionTests(unittest.TestCase):
     def test_the_version_is_read_from_the_app_itself(self) -> None:
         # The tag has to match what Settings reports, so it is read from the
         # same place rather than typed twice.
-        from netpulse.config import APP_VERSION
+        from netvitals.config import APP_VERSION
         self.assertEqual(tool.app_version(), APP_VERSION)
 
     def test_it_looks_like_a_version(self) -> None:

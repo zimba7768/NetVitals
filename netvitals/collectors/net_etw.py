@@ -109,7 +109,7 @@ class EtwNetCollector:
             return False
         if not is_admin():
             self.reason = ("Per-app tracking needs administrator rights — "
-                           "start NetPulse with 'Run as administrator'.")
+                           "start NetVitals with 'Run as administrator'.")
             return False
         try:
             from etw import ETW, ProviderInfo          # pywintrace
@@ -124,7 +124,7 @@ class EtwNetCollector:
                 "Microsoft-Windows-Kernel-Network", GUID(KERNEL_NETWORK_GUID)
             )
             self._job = ETW(
-                session_name="NetPulseKernelNet",
+                session_name="NetVitalsKernelNet",
                 providers=[provider],
                 event_callback=self._on_event,
             )

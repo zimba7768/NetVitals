@@ -1,5 +1,5 @@
 @echo off
-rem Puts a NetPulse shortcut on the Desktop, carrying the app's own icon
+rem Puts a NetVitals shortcut on the Desktop, carrying the app's own icon
 rem instead of the Python one.
 cd /d "%~dp0"
 call "%~dp0_find-python.bat"
@@ -10,7 +10,7 @@ if not defined PYEXE (
 )
 
 echo.
-echo  Generating netpulse.ico...
+echo  Generating netvitals.ico...
 "%PYEXE%" "%~dp0main.py" --write-ico
 
 echo  Creating the Desktop shortcut...

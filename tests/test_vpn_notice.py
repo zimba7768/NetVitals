@@ -21,15 +21,15 @@ from PySide6.QtWidgets import QApplication
 
 _app = QApplication.instance() or QApplication([])
 
-from netpulse.config import Settings                    # noqa: E402
-from netpulse.db import DIRECT, VPN, Database           # noqa: E402
-from netpulse.engine import Engine                      # noqa: E402
-from netpulse.ui import pages                           # noqa: E402
+from netvitals.config import Settings                    # noqa: E402
+from netvitals.db import DIRECT, VPN, Database           # noqa: E402
+from netvitals.engine import Engine                      # noqa: E402
+from netvitals.ui import pages                           # noqa: E402
 
 
 class VpnNoticeTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.dir = tempfile.mkdtemp(prefix="netpulse-notice-")
+        self.dir = tempfile.mkdtemp(prefix="netvitals-notice-")
         self.db = Database(os.path.join(self.dir, f"n_{time.time_ns()}.db"))
         self.settings = Settings()
         self.engine = Engine(self.db, self.settings)
@@ -85,7 +85,7 @@ class ManualRecheckTests(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        self.dir = tempfile.mkdtemp(prefix="netpulse-recheck-")
+        self.dir = tempfile.mkdtemp(prefix="netvitals-recheck-")
         self.db = Database(os.path.join(self.dir, f"n_{time.time_ns()}.db"))
         self.settings = Settings()
         self.engine = Engine(self.db, self.settings)

@@ -1,4 +1,4 @@
-"""Comparing the two interpreters NetPulse can run under.
+"""Comparing the two interpreters NetVitals can run under.
 
 The app is launched with pythonw.exe so it has no console window; every
 diagnostic so far has been run with python.exe. Per-application VPN rules,
@@ -71,15 +71,15 @@ class CompareVerdictTests(unittest.TestCase):
 
 class WindowedTwinTests(unittest.TestCase):
     def test_an_override_is_honoured(self) -> None:
-        os.environ["NETPULSE_ALT_PYTHON"] = "/some/other/python"
-        self.addCleanup(os.environ.pop, "NETPULSE_ALT_PYTHON", None)
+        os.environ["NETVITALS_ALT_PYTHON"] = "/some/other/python"
+        self.addCleanup(os.environ.pop, "NETVITALS_ALT_PYTHON", None)
         # Compare paths as paths: Path normalises separators per platform, so
         # comparing against a string with forward slashes can only ever pass
         # on Linux — which is how this got through in the first place.
         self.assertEqual(tool.windowed_twin(), Path("/some/other/python"))
 
     def test_a_missing_twin_is_none_rather_than_a_guess(self) -> None:
-        os.environ.pop("NETPULSE_ALT_PYTHON", None)
+        os.environ.pop("NETVITALS_ALT_PYTHON", None)
         # pythonw.exe does not exist beside a Linux interpreter.
         if not sys.platform.startswith("win"):
             self.assertIsNone(tool.windowed_twin())

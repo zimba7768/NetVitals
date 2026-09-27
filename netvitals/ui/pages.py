@@ -442,7 +442,7 @@ class AppsPage(Page):
             QApplication.quit()
         else:
             QMessageBox.information(
-                self, "NetPulse",
+                self, "NetVitals",
                 "Windows declined the elevation request. Right-click "
                 "run-as-admin.bat and choose 'Run as administrator' instead.")
 
@@ -537,7 +537,7 @@ class FilesPage(Page):
         self.rescan_button.setEnabled(True)
         self.refresh()
         QMessageBox.information(
-            self, "NetPulse",
+            self, "NetVitals",
             f"Browser history scan complete — {added} new file(s) added.")
 
     def _open_row(self, item) -> None:
@@ -801,7 +801,7 @@ class SettingsPage(Page):
         unit_wrap.setLayout(unit_row)
         behaviour.add(unit_wrap)
 
-        self.autostart_check = QCheckBox("Start NetPulse when I sign in to Windows")
+        self.autostart_check = QCheckBox("Start NetVitals when I sign in to Windows")
         self.autostart_check.setChecked(autostart.is_enabled())
         self.autostart_check.toggled.connect(self._toggle_autostart)
         self.autostart_check.setEnabled(not is_packaged())
@@ -875,7 +875,7 @@ class SettingsPage(Page):
         body.addWidget(data_card)
 
         about = QLabel(
-            f"NetPulse {APP_VERSION} · totals come from the Windows adapter "
+            f"NetVitals {APP_VERSION} · totals come from the Windows adapter "
             "counters; per-application figures come from the kernel network "
             "trace.")
         about.setObjectName("CardHint")
@@ -932,13 +932,13 @@ class SettingsPage(Page):
         self.settings.set("autostart", enabled and ok)
         self.autostart_note.setText(autostart.describe())
         if not ok:
-            QMessageBox.warning(self, "NetPulse", message)
+            QMessageBox.warning(self, "NetVitals", message)
             # Put the tick back where reality is.
             self.autostart_check.blockSignals(True)
             self.autostart_check.setChecked(autostart.is_enabled())
             self.autostart_check.blockSignals(False)
         elif enabled:
-            QMessageBox.information(self, "NetPulse", message)
+            QMessageBox.information(self, "NetVitals", message)
 
     def _open_data(self) -> None:
         from ..config import data_dir
@@ -951,13 +951,13 @@ class SettingsPage(Page):
             int(self.settings.get("retain_day_days", 0)))
         self.db.vacuum()
         self.refresh()
-        QMessageBox.information(self, "NetPulse",
+        QMessageBox.information(self, "NetVitals",
                                 f"Database compacted — {removed:,} stale row(s) removed.")
 
     def _export(self) -> None:
         import csv
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export usage history", "netpulse-export.csv", "CSV files (*.csv)")
+            self, "Export usage history", "netvitals-export.csv", "CSV files (*.csv)")
         if not path:
             return
         try:
@@ -985,9 +985,9 @@ class SettingsPage(Page):
                     writer.writerow(["file", f["name"], f["size"],
                                      datetime.fromtimestamp(f["ts"]).isoformat(" ", "seconds"),
                                      f["source"] or "", f["app"] or "", f["folder"]])
-            QMessageBox.information(self, "NetPulse", f"Exported to {path}")
+            QMessageBox.information(self, "NetVitals", f"Exported to {path}")
         except OSError as exc:
-            QMessageBox.warning(self, "NetPulse", f"Could not write the file: {exc}")
+            QMessageBox.warning(self, "NetVitals", f"Could not write the file: {exc}")
 
     def _reset(self) -> None:
         confirm = QMessageBox.question(

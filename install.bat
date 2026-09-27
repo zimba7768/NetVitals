@@ -1,9 +1,9 @@
 @echo off
-title NetPulse - install
+title NetVitals - install
 cd /d "%~dp0"
 
 echo.
-echo  NetPulse - installing dependencies
+echo  NetVitals - installing dependencies
 echo  ==================================
 echo.
 echo  Looking for Python...
@@ -48,7 +48,7 @@ echo  Installing pywintrace (optional - enables the per-app breakdown)...
 "%PYEXE%" -m pip install pywintrace
 if errorlevel 1 (
     echo.
-    echo  pywintrace could not be installed. That is not fatal - NetPulse will
+    echo  pywintrace could not be installed. That is not fatal - NetVitals will
     echo  record machine-wide totals and the file log as normal, and the
     echo  Applications page will explain that it is off.
 )
@@ -76,7 +76,7 @@ echo.
 echo  ==================================
 echo  Done.
 echo.
-echo  Start NetPulse with        run.bat
+echo  Start NetVitals with        run.bat
 echo  For per-app tracking use   run-as-admin.bat
 echo.
 echo  (The interpreter above was saved to python-path.txt, so the run

@@ -4,7 +4,7 @@ param(
 )
 
 $root = $Root.TrimEnd('\')
-$icon = Join-Path $root 'netpulse.ico'
+$icon = Join-Path $root 'netvitals.ico'
 $script = Join-Path $root 'main.py'
 
 if (-not (Test-Path $script)) {
@@ -13,18 +13,18 @@ if (-not (Test-Path $script)) {
 }
 
 $desktop = [Environment]::GetFolderPath('Desktop')
-$link = Join-Path $desktop 'NetPulse.lnk'
+$link = Join-Path $desktop 'NetVitals.lnk'
 
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($link)
 $shortcut.TargetPath = $Interpreter
 $shortcut.Arguments = '"' + $script + '"'
 $shortcut.WorkingDirectory = $root
-$shortcut.Description = 'NetPulse network usage monitor'
+$shortcut.Description = 'NetVitals network usage monitor'
 if (Test-Path $icon) {
     $shortcut.IconLocation = $icon
 } else {
-    Write-Host "  netpulse.ico is missing, the shortcut will use the Python icon."
+    Write-Host "  netvitals.ico is missing, the shortcut will use the Python icon."
 }
 $shortcut.Save()
 

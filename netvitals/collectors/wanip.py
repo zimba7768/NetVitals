@@ -1,7 +1,7 @@
 """Public (WAN) IP address lookup.
 
 Your router knows its own WAN address, but there is no reliable, vendor-neutral
-way to ask it — so, like every other tool that shows this, NetPulse asks an
+way to ask it — so, like every other tool that shows this, NetVitals asks an
 outside service what address the request appeared to come from.
 
 That means a small outbound HTTPS request, which is worth being upfront about
@@ -57,7 +57,7 @@ TIMEOUT = 8.0
 #: A bare address is under 50 bytes; the trace endpoint answers with a few
 #: short lines. Anything larger is an error page, and is rejected on parsing.
 MAX_BYTES = 512
-USER_AGENT = "NetPulse/1.0 (+https://github.com/zimba7768/Netpulse)"
+USER_AGENT = "NetVitals/1.0 (+https://github.com/zimba7768/NetVitals)"
 
 #: How often the adapter fingerprint is compared. Local only, so it is cheap.
 POLL_SECONDS = 2.0

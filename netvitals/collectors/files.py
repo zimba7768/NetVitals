@@ -282,7 +282,7 @@ class FileTracker:
     def _copy_locked(src: Path) -> Path | None:
         """Browsers hold their history open — work on a snapshot."""
         try:
-            tmp = Path(tempfile.gettempdir()) / f"netpulse_{src.parent.name}_{src.name}"
+            tmp = Path(tempfile.gettempdir()) / f"netvitals_{src.parent.name}_{src.name}"
             shutil.copy2(src, tmp)
             for extra in ("-wal", "-shm"):
                 side = Path(str(src) + extra)

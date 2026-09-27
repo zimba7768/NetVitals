@@ -2,12 +2,12 @@
 
 There are two ways to start an app at sign-in, and the difference matters here:
 
-* A **scheduled task** with "run with highest privileges" starts NetPulse
+* A **scheduled task** with "run with highest privileges" starts NetVitals
   elevated and silently, so per-application tracking is available from the
   moment you sign in. Creating the task needs administrator rights once.
 * The **Run registry key** needs no rights at all, but Windows always launches
   Run entries unelevated — and it cannot show a UAC prompt at sign-in — so
-  NetPulse would start with machine-wide totals only.
+  NetVitals would start with machine-wide totals only.
 
 So: try the scheduled task, fall back to the Run key, and tell the user which
 one they ended up with.
@@ -25,8 +25,13 @@ from pathlib import Path
 
 from .config import is_packaged
 
-APP_KEY = "NetPulse"
-TASK_NAME = "NetPulse"
+APP_KEY = "NetVitals"
+TASK_NAME = "NetVitals"
+#: The task and startup entry the application registered before it was
+#: renamed. Windows keeps both quite happily, so an upgrade would leave the
+#: old one behind, still launching the copy that existed when it was made.
+FORMER_TASK_NAME = "NetPulse"
+FORMER_APP_KEY = "NetPulse"
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
 IS_WINDOWS = sys.platform.startswith("win")
@@ -110,8 +115,8 @@ def _task_xml() -> str:
     return f"""<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
-    <Author>NetPulse</Author>
-    <Description>Starts NetPulse network usage monitoring at sign-in.</Description>
+    <Author>NetVitals</Author>
+    <Description>Starts NetVitals network usage monitoring at sign-in.</Description>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>
@@ -189,7 +194,7 @@ def _elevated_schtasks(xml_path: Path) -> tuple[int, str]:
 
 
 def _create_task() -> tuple[bool, str]:
-    path = Path(tempfile.gettempdir()) / "netpulse-task.xml"
+    path = Path(tempfile.gettempdir()) / "netvitals-task.xml"
     try:
         # schtasks wants UTF-16 for /XML input.
         path.write_text(_task_xml(), encoding="utf-16")
@@ -264,6 +269,34 @@ def _delete_task() -> None:
         _run(["schtasks", "/Delete", "/TN", TASK_NAME, "/F"])
 
 
+def clear_former_autostart() -> bool:
+    """Remove the task and startup entry left by the pre-rename version.
+
+    Without this an upgrade leaves two startup entries: ours, and one named
+    NetPulse still pointing at wherever that copy was installed. The user
+    would see the application start twice, or start from a stale location,
+    with nothing on screen explaining why.
+
+    Returns True when something was actually removed.
+    """
+    if not IS_WINDOWS:
+        return False
+    removed = False
+    code, _ = _run(["schtasks", "/Query", "/TN", FORMER_TASK_NAME])
+    if code == 0:
+        code, _ = _run(["schtasks", "/Delete", "/TN", FORMER_TASK_NAME, "/F"])
+        removed = removed or code == 0
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0,
+                            winreg.KEY_SET_VALUE) as key:
+            winreg.DeleteValue(key, FORMER_APP_KEY)
+            removed = True
+    except OSError:
+        pass                              # not there, which is the normal case
+    return removed
+
+
 # -------------------------------------------------------------------- run key
 def run_key_exists() -> bool:
     if not IS_WINDOWS:
@@ -321,7 +354,7 @@ def describe() -> str:
     if mode == MODE_TASK:
         if not task_matches_this_copy():
             command, _ = task_action()
-            return ("On, but pointing at a different copy of NetPulse "
+            return ("On, but pointing at a different copy of NetVitals "
                     f"({command or 'unknown location'}). That is the one Windows "
                     "will start. Untick and re-tick this box to point it at "
                     "this copy instead.")
@@ -334,7 +367,7 @@ def describe() -> str:
                 "Untick and re-tick this box to switch to a scheduled task, "
                 "which can start elevated. Listed in Task Manager › Startup "
                 "apps, where it may appear as ‘pythonw.exe’.")
-    return "Off — NetPulse will not start automatically."
+    return "Off — NetVitals will not start automatically."
 
 
 def set_enabled(enabled: bool) -> tuple[bool, str]:
@@ -344,7 +377,7 @@ def set_enabled(enabled: bool) -> tuple[bool, str]:
     # not.
     if is_packaged():
         return False, ("Windows controls this for Store installs. Open Task "
-                       "Manager › Startup apps and switch NetPulse on there.")
+                       "Manager › Startup apps and switch NetVitals on there.")
     if not IS_WINDOWS:
         return False, "Start with Windows is only available on Windows."
 
@@ -353,7 +386,7 @@ def set_enabled(enabled: bool) -> tuple[bool, str]:
         ok, err = _set_run_key(False)
         if not ok:
             return False, f"Could not remove the startup entry: {err}"
-        return True, "NetPulse will no longer start automatically."
+        return True, "NetVitals will no longer start automatically."
 
     # Always aim for the scheduled task: it is the only mechanism that can
     # start elevated at sign-in, and it can now be registered from an ordinary
@@ -361,15 +394,15 @@ def set_enabled(enabled: bool) -> tuple[bool, str]:
     ok, output = _create_task()
     if ok:
         _set_run_key(False)              # never leave both in place
-        return True, ("Done. NetPulse will start automatically when you sign "
+        return True, ("Done. NetVitals will start automatically when you sign "
                       "in, with administrator rights, so the per-application "
                       "breakdown works from the start.")
 
     ok, err = _set_run_key(True)
     if not ok:
-        return False, f"Could not set NetPulse to start automatically: {err}"
+        return False, f"Could not set NetVitals to start automatically: {err}"
     return True, (
-        "NetPulse will start automatically when you sign in — but without "
+        "NetVitals will start automatically when you sign in — but without "
         "administrator rights, so the per-application breakdown will be off "
         "until you open it with run-as-admin.bat.\n\n"
         "The scheduled task that would have started it elevated could not be "

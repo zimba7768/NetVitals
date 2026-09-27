@@ -1,4 +1,4 @@
-"""NetPulse — a network usage monitor for Windows.
+"""NetVitals — a network usage monitor for Windows.
 
     python main.py            open the window
     python main.py --tray     start hidden in the notification area
@@ -17,23 +17,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon
 
-from netpulse.config import (APP_NAME, APP_VERSION, Settings, data_dir,
+from netvitals import autostart
+from netvitals.config import (APP_NAME, APP_VERSION, Settings, data_dir,
                              db_path, is_packaged)
-from netpulse.db import Database
-from netpulse.engine import Engine
-from netpulse.ui import theme
-from netpulse.ui.assets import ensure_assets, write_ico
-from netpulse.ui.main_window import MainWindow
-from netpulse.ui.tray import app_icon
+from netvitals.db import Database
+from netvitals.engine import Engine
+from netvitals.ui import theme
+from netvitals.ui.assets import ensure_assets, write_ico
+from netvitals.ui.main_window import MainWindow
+from netvitals.ui.tray import app_icon
 
-SINGLE_INSTANCE_KEY = "NetPulse.SingleInstance.v1"
+SINGLE_INSTANCE_KEY = "NetVitals.SingleInstance.v1"
 
 #: Windows groups taskbar buttons — and picks their icon — by this string.
 #: Without an explicit one the process inherits pythonw.exe's identity, which
 #: is why an unconfigured PySide app shows the Python logo on the taskbar even
 #: though its window icon is set correctly. This must be set before any window
 #: exists.
-APP_USER_MODEL_ID = "zimba7768.NetPulse.Monitor.1"
+APP_USER_MODEL_ID = "zimba7768.NetVitals.Monitor.1"
 
 
 def claim_windows_identity() -> None:
@@ -76,9 +77,9 @@ def main() -> int:
     # frozen build the source folder is a temporary directory, so the icon goes
     # beside the executable instead.
     if getattr(sys, "frozen", False):
-        icon_file = Path(sys.executable).resolve().parent / "netpulse.ico"
+        icon_file = Path(sys.executable).resolve().parent / "netvitals.ico"
     else:
-        icon_file = Path(__file__).resolve().parent / "netpulse.ico"
+        icon_file = Path(__file__).resolve().parent / "netvitals.ico"
     # Only write when it is missing, or when asked for explicitly: rewriting
     # it on every launch left the source checkout permanently "modified".
     force = "--write-ico" in sys.argv
@@ -100,6 +101,14 @@ def main() -> int:
     QLocalServer.removeServer(SINGLE_INSTANCE_KEY)
     server.listen(SINGLE_INSTANCE_KEY)
 
+    # An upgrade from the NetPulse era leaves that version's startup entry
+    # behind, pointing at wherever it was installed. Clear it once, quietly:
+    # the user did not ask for two of these.
+    try:
+        autostart.clear_former_autostart()
+    except Exception:
+        pass
+
     settings = Settings()
     database = Database(db_path())
     engine = Engine(database, settings)
@@ -119,7 +128,7 @@ def main() -> int:
     start_hidden = "--tray" in sys.argv or settings.get("start_minimized", False)
     if start_hidden and QSystemTrayIcon.isSystemTrayAvailable():
         window.tray.showMessage(
-            "NetPulse is recording",
+            "NetVitals is recording",
             "Double-click this icon to open the dashboard.",
             QSystemTrayIcon.Information, 3500)
     else:

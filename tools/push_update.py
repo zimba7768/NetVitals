@@ -1,4 +1,4 @@
-"""Commit and push a NetPulse change, with the footguns removed.
+"""Commit and push a NetVitals change, with the footguns removed.
 
 Driven by push-update.bat. Written in Python rather than batch so it can be
 tested, and because the two mistakes this exists to prevent were both created
@@ -36,7 +36,7 @@ def run(args: list[str], capture: bool = False) -> subprocess.CompletedProcess:
 
 def app_version() -> str:
     """The version the app reports, which the git tag has to match."""
-    text = (ROOT / "netpulse" / "config.py").read_text(encoding="utf-8")
+    text = (ROOT / "netvitals" / "config.py").read_text(encoding="utf-8")
     match = re.search(r'APP_VERSION\s*=\s*"([^"]+)"', text)
     return match.group(1) if match else ""
 
@@ -53,7 +53,7 @@ def build_message(subject: str, body: str = "") -> str:
 def write_message(message: str) -> Path:
     """Write the message somewhere git will never be asked to track it."""
     handle = tempfile.NamedTemporaryFile(
-        mode="w", suffix=".txt", prefix="netpulse-commit-",
+        mode="w", suffix=".txt", prefix="netvitals-commit-",
         encoding="utf-8", newline="\n", delete=False)
     with handle:
         handle.write(message)            # utf-8, and no BOM: see the docstring

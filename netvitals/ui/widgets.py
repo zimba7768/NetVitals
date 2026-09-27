@@ -170,7 +170,7 @@ class WanIpChip(QFrame):
             self.value.setStyleSheet(f"color:{theme.MUTED};")
             self.setToolTip(
                 "The address lookup has stopped running.\n"
-                "Restart NetPulse to start it again."
+                "Restart NetVitals to start it again."
                 + (f"\n\n{detail}" if detail else ""))
             return
 

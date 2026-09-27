@@ -20,19 +20,19 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 TEMP = Path(tempfile.gettempdir())
-OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else TEMP / "netpulse-shots"
+OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else TEMP / "netvitals-shots"
 OUT.mkdir(parents=True, exist_ok=True)
-os.environ.setdefault("NETPULSE_DATA_DIR", str(TEMP / "netpulse-demo"))
+os.environ.setdefault("NETVITALS_DATA_DIR", str(TEMP / "netvitals-demo"))
 
 from PySide6.QtCore import QCoreApplication  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
-from netpulse.config import Settings, data_dir, db_path  # noqa: E402
-from netpulse.db import Database  # noqa: E402
-from netpulse.engine import Engine  # noqa: E402
-from netpulse.ui import theme  # noqa: E402
-from netpulse.ui.assets import ensure_assets  # noqa: E402
-from netpulse.ui.main_window import MainWindow  # noqa: E402
+from netvitals.config import Settings, data_dir, db_path  # noqa: E402
+from netvitals.db import Database  # noqa: E402
+from netvitals.engine import Engine  # noqa: E402
+from netvitals.ui import theme  # noqa: E402
+from netvitals.ui.assets import ensure_assets  # noqa: E402
+from netvitals.ui.main_window import MainWindow  # noqa: E402
 
 APPS = [
     ("chrome.exe", 0.30), ("steam.exe", 0.22), ("Spotify.exe", 0.10),
@@ -145,7 +145,7 @@ def main() -> int:
                             level * VPN_SHARE, level * VPN_SHARE * 0.12))
 
     # Pretend a tunnel is up, so the dashboard's VPN notice is captured too.
-    from netpulse.ui import pages as pages_module
+    from netvitals.ui import pages as pages_module
     pages_module.vpn_active = lambda: True
 
     window = MainWindow(db, engine, settings)

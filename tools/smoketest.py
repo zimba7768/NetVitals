@@ -20,16 +20,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-WORK = Path(tempfile.mkdtemp(prefix="netpulse-smoke-"))
+WORK = Path(tempfile.mkdtemp(prefix="netvitals-smoke-"))
 WATCH = WORK / "Downloads"
 WATCH.mkdir()
-os.environ["NETPULSE_DATA_DIR"] = str(WORK / "data")
+os.environ["NETVITALS_DATA_DIR"] = str(WORK / "data")
 
 from PySide6.QtCore import Qt  # noqa: E402
 
-from netpulse.config import Settings, db_path  # noqa: E402
-from netpulse.db import Database  # noqa: E402
-from netpulse.engine import Engine  # noqa: E402
+from netvitals.config import Settings, db_path  # noqa: E402
+from netvitals.db import Database  # noqa: E402
+from netvitals.engine import Engine  # noqa: E402
 
 FAILURES: list[str] = []
 

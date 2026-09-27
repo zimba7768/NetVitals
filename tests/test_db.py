@@ -11,17 +11,17 @@ from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from netpulse.db import (DAY, HOUR, MINUTE, SYSTEM, Database, floor_day,
+from netvitals.db import (DAY, HOUR, MINUTE, SYSTEM, Database, floor_day,
                          floor_hour, floor_minute)
-from netpulse.units import format_bytes, format_rate
+from netvitals.units import format_bytes, format_rate
 
 
 class DatabaseTests(unittest.TestCase):
     def setUp(self) -> None:
         # tempfile, not a hard-coded "/tmp": on Windows that resolves to
         # C:\tmp, which does not exist, and SQLite cannot create the file.
-        self.dir = tempfile.mkdtemp(prefix="netpulse-test-")
-        self.path = os.path.join(self.dir, f"netpulse_{time.time_ns()}.db")
+        self.dir = tempfile.mkdtemp(prefix="netvitals-test-")
+        self.path = os.path.join(self.dir, f"netvitals_{time.time_ns()}.db")
         self.db = Database(self.path)
 
     def tearDown(self) -> None:

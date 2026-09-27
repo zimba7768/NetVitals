@@ -38,7 +38,7 @@ _GEOMETRY_NORMAL = (20.0, 44.0, 11.0, 8.0, 56.0)
 
 def _paint_mark(p: QPainter, size: int, down_alpha: float = 1.0,
                 up_alpha: float = 1.0) -> None:
-    """Draw the NetPulse mark into an already-open painter."""
+    """Draw the NetVitals mark into an already-open painter."""
     unit = size / 64.0
     left, right, half, top, bottom = (
         _GEOMETRY_SMALL if size < 24 else _GEOMETRY_NORMAL)
@@ -105,10 +105,10 @@ class Tray(QSystemTrayIcon):
         self._last_icon: tuple[int, int] = (-1, -1)
 
         self.setIcon(app_icon())
-        self.setToolTip("NetPulse")
+        self.setToolTip("NetVitals")
 
         menu = QMenu()
-        self.show_action = QAction("Open NetPulse", self)
+        self.show_action = QAction("Open NetVitals", self)
         self.show_action.triggered.connect(self.window.show_from_tray)
         menu.addAction(self.show_action)
 
@@ -136,7 +136,7 @@ class Tray(QSystemTrayIcon):
 
     def update_rates(self, down: float, up: float, unit: str = "auto") -> None:
         self.setToolTip(
-            f"NetPulse\nDownload {format_rate(down, unit)}\nUpload {format_rate(up, unit)}")
+            f"NetVitals\nDownload {format_rate(down, unit)}\nUpload {format_rate(up, unit)}")
         # Repaint only when the displayed intensity would actually change.
         key = (int(min(down, 4e6) // 65536), int(min(up, 4e6) // 65536))
         if key != self._last_icon:

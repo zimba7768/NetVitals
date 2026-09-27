@@ -15,11 +15,11 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from netpulse.collectors import net_system
-from netpulse.collectors.net_system import (DIRECT, IGNORED, VPN,
+from netvitals.collectors import net_system
+from netvitals.collectors.net_system import (DIRECT, IGNORED, VPN,
                                             SystemNetCollector,
                                             classify_adapter)
-from netpulse.db import Database
+from netvitals.db import Database
 
 
 class Counter:
@@ -111,7 +111,7 @@ class SplitTests(unittest.TestCase):
 
 class StorageTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.dir = tempfile.mkdtemp(prefix="netpulse-links-")
+        self.dir = tempfile.mkdtemp(prefix="netvitals-links-")
         self.db = Database(os.path.join(self.dir, f"n_{time.time_ns()}.db"))
 
     def tearDown(self) -> None:

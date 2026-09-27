@@ -1,10 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller build definition — produces a single self-contained NetPulse.exe.
+"""PyInstaller build definition — produces a single self-contained NetVitals.exe.
 
 Used by both build-exe.bat (local builds) and the release workflow, so the two
 can never drift apart.
 
-    pyinstaller netpulse.spec
+    pyinstaller netvitals.spec
 """
 from PyInstaller.utils.hooks import collect_submodules
 
@@ -47,7 +47,7 @@ analysis = Analysis(
     pathex=[],
     binaries=[],
     # Ship the icon so shortcuts and the tray have it without a first run.
-    datas=[("netpulse.ico", ".")],
+    datas=[("netvitals.ico", ".")],
     hiddenimports=hidden_imports,
     hookspath=[],
     hooksconfig={},
@@ -65,7 +65,7 @@ exe = EXE(
     analysis.binaries,
     analysis.datas,
     [],
-    name="NetPulse",
+    name="NetVitals",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -78,5 +78,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon="netpulse.ico",
+    icon="netvitals.ico",
 )

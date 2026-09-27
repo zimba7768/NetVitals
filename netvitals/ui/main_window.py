@@ -34,7 +34,7 @@ class MainWindow(QWidget):
         self._rendered_day = date.today()
 
         self.setObjectName("Root")
-        self.setWindowTitle("NetPulse — Network Usage Monitor")
+        self.setWindowTitle("NetVitals — Network Usage Monitor")
         self.setWindowIcon(app_icon())
         self.resize(1180, 780)
         self.setMinimumSize(940, 620)
@@ -84,7 +84,7 @@ class MainWindow(QWidget):
 
         brand = QVBoxLayout()
         brand.setSpacing(1)
-        name = QLabel("NetPulse")
+        name = QLabel("NetVitals")
         name.setObjectName("BrandName")
         tag = QLabel("NETWORK USAGE")
         tag.setObjectName("BrandTag")
@@ -208,7 +208,7 @@ class MainWindow(QWidget):
         event.ignore()
         self.hide()
         self.tray.showMessage(
-            "NetPulse is still recording",
+            "NetVitals is still recording",
             "Usage tracking continues in the background. "
             "Double-click the tray icon to reopen.",
             app_icon(), 4000)

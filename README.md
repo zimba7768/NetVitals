@@ -1,4 +1,4 @@
-<h1 align="center">NetPulse</h1>
+<h1 align="center">NetVitals</h1>
 
 <p align="center">
   A network usage monitor for Windows.<br>
@@ -7,14 +7,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/YOUR-USERNAME/netpulse/actions/workflows/tests.yml">
-    <img alt="tests" src="https://github.com/YOUR-USERNAME/netpulse/actions/workflows/tests.yml/badge.svg"></a>
+  <a href="https://github.com/YOUR-USERNAME/netvitals/actions/workflows/tests.yml">
+    <img alt="tests" src="https://github.com/YOUR-USERNAME/netvitals/actions/workflows/tests.yml/badge.svg"></a>
   <img alt="platform" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078d4">
   <img alt="python" src="https://img.shields.io/badge/python-3.10%2B-3776ab">
   <a href="LICENSE"><img alt="licence" src="https://img.shields.io/badge/licence-MIT-green"></a>
 </p>
 
-![The NetPulse dashboard](docs/screenshots/dashboard.png)
+![The NetVitals dashboard](docs/screenshots/dashboard.png)
 
 ---
 
@@ -34,7 +34,7 @@
   direct traffic only, so the two are never added together.
 - **Your public IP** — shown beside the dashboard title, click to copy. Follows
   a VPN within seconds of it connecting or dropping.
-- **Local and private** — one SQLite file in `%APPDATA%\NetPulse`. No account,
+- **Local and private** — one SQLite file in `%APPDATA%\NetVitals`. No account,
   no cloud, no telemetry. The *only* outbound request it ever makes is the
   public-IP lookup, and that can be switched off in Settings.
 
@@ -64,6 +64,17 @@ table underneath.
 
 </details>
 
+## Renamed from NetPulse
+
+This was called **NetPulse** until 1.3.0. The name was already taken in the
+Microsoft Store by an unrelated Windows network monitor, and being the second
+one invites confusion in both directions.
+
+Upgrading keeps your data: on first run the new version copies the old
+`%APPDATA%\NetPulse` folder into `%APPDATA%\NetVitals` and leaves the original
+untouched, and it removes the startup entry the old name registered so the app
+does not start twice.
+
 ## Two builds
 
 The version here is the full one. A **Microsoft Store** build also exists for
@@ -85,7 +96,7 @@ that it is packaged, says so on the Applications page, and links back here.
 
 ## Download
 
-**[Grab the latest `NetPulse.exe` from Releases](../../releases/latest)** — one
+**[Grab the latest `NetVitals.exe` from Releases](../../releases/latest)** — one
 file, no Python required. Put it anywhere and run it; for the per-application
 breakdown, right-click and **Run as administrator**.
 
@@ -115,7 +126,7 @@ Optionally run **`make-shortcut.bat`** for a Desktop shortcut carrying the app's
 own icon, which you can drag to the taskbar to pin.
 
 The interpreter that ends up being used is cached in `python-path.txt`. To point
-NetPulse at a different Python, edit that file — one line, the full path to
+NetVitals at a different Python, edit that file — one line, the full path to
 `python.exe`.
 
 ## How it measures
@@ -169,7 +180,7 @@ a small number and comparing percentages there produces false alarms.
 
 ### Per-application — kernel network trace
 
-Windows exposes no ordinary API for per-process byte counts. NetPulse reads what
+Windows exposes no ordinary API for per-process byte counts. NetVitals reads what
 Task Manager's own network column reads: the `Microsoft-Windows-Kernel-Network`
 ETW provider, which emits an event for every TCP/UDP send and receive along with
 the owning process ID.
@@ -196,7 +207,7 @@ Two sources that reinforce each other:
 ### Public IP — an outside lookup
 
 Your router knows its WAN address but there is no vendor-neutral way to ask it,
-so NetPulse does what every other tool does: asks an external service what
+so NetVitals does what every other tool does: asks an external service what
 address the request appeared to come from. It tries ipify.org and a few
 alternatives in turn.
 
@@ -233,7 +244,7 @@ whole feature has an off switch in Settings.
 attachment sent through webmail would mean decrypting your HTTPS traffic through
 a local proxy — installing a root certificate, breaking every app that pins its
 certificate, and getting flagged by antivirus. It would also still miss anything
-that bypasses the system proxy. NetPulse doesn't go there. What it gives you
+that bypasses the system proxy. NetVitals doesn't go there. What it gives you
 instead is upload **volume** per application and per period, which answers "what
 has been uploading?" without touching encrypted traffic.
 
@@ -242,10 +253,10 @@ has been uploading?" without touching encrypted traffic.
 Off by default; turn it on in **Settings → Appearance and behaviour**. The line
 under the tick box always says which of two mechanisms is in use:
 
-- **Scheduled task** — what it aims for. Windows starts NetPulse elevated and
+- **Scheduled task** — what it aims for. Windows starts NetVitals elevated and
   silently at sign-in, so per-application tracking works from the start.
   Registering the task is itself a privileged operation, so ticking the box
-  raises one administrator prompt; you do not need to restart NetPulse as
+  raises one administrator prompt; you do not need to restart NetVitals as
   administrator first. It lives in Task Scheduler and, importantly, **does not
   appear in Task Manager's Startup tab**.
 - **Startup entry** — the fallback if that prompt is declined or the task
@@ -253,7 +264,7 @@ under the tick box always says which of two mechanisms is in use:
   cannot show a UAC prompt at sign-in, so per-application tracking will be off.
   Untick and re-tick the box to try for the scheduled task again.
 
-The task records an absolute path. If you move or re-clone NetPulse, the old
+The task records an absolute path. If you move or re-clone NetVitals, the old
 task keeps starting the old copy — the line under the tick box says so when
 that happens, and re-ticking repoints it.
 
@@ -277,8 +288,8 @@ changes included.
 
 ```bash
 python -m pip install -r requirements.txt
-python -m unittest discover -s tests -v   # 187 tests
-python -m pyflakes netpulse main.py tools tests
+python -m unittest discover -s tests -v   # 196 tests
+python -m pyflakes netvitals main.py tools tests
 ```
 
 Two extra harnesses, both used by CI:
@@ -295,7 +306,7 @@ with a year of plausible traffic and grabs each page with the offscreen Qt
 platform, so the interface can be reviewed without a desktop session.
 
 To build the standalone executable yourself, run **`build-exe.bat`** (or
-`pyinstaller netpulse.spec`). The result is `dist\NetPulse.exe`. The same spec
+`pyinstaller netvitals.spec`). The result is `dist\NetVitals.exe`. The same spec
 file is what the release workflow uses, so a local build and a published one are
 identical.
 
@@ -309,7 +320,7 @@ run.bat / run-as-admin.bat  launchers
 make-shortcut.bat / .ps1    Desktop shortcut with the app icon
 push-update.bat             test, commit, push and tag in one step
 _find-python.bat            shared interpreter discovery
-netpulse/
+netvitals/
   config.py                 paths, settings, packaged-build detection
   units.py                  byte / rate / time formatting
   log.py                    small capped diagnostic log
@@ -351,7 +362,7 @@ release is 0.2.0, don't pin higher. It's optional; only the per-application
 breakdown needs it.
 
 **"Could not start the ETW session."** A previous session is still registered.
-Run `logman stop NetPulseKernelNet -ets` in an elevated Command Prompt and
+Run `logman stop NetVitalsKernelNet -ets` in an elevated Command Prompt and
 restart.
 
 **Numbers look higher than my ISP reports.** Adapter counters include protocol
@@ -361,7 +372,7 @@ count only what crosses their border.
 **A VPN is running and totals look doubled.** They shouldn't from 1.1.0 onward —
 tunnel adapters are recognised by name and subtracted rather than added. If
 yours isn't recognised, add it to `TUNNEL_HINTS` in
-`netpulse/collectors/net_system.py`; the Settings page lists every adapter and
+`netvitals/collectors/net_system.py`; the Settings page lists every adapter and
 how it is being treated. Figures recorded before 1.1.0 were doubled while a VPN
 was connected — **Settings → Reset all statistics** clears them.
 
@@ -386,7 +397,7 @@ reports whether they see the same public address. If they differ, look for
 only appear after hours of uptime, and a freshly started diagnostic process
 cannot reproduce them by definition. From 1.1.8 the app keeps its own short
 record — **Settings → Open the lookup log**, or `wanip.log` beside the database
-in `%APPDATA%\NetPulse`. It notes each network change by adapter name, every
+in `%APPDATA%\NetVitals`. It notes each network change by adapter name, every
 failed lookup with the underlying cause per provider, and any unexpected error
 in the loop. Normal running adds a line or two a day; the file is capped and
 trims its oldest half. It contains your public IP address, so read it before

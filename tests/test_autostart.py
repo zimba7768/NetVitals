@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from netpulse import autostart
+from netvitals import autostart
 
 NS = {"t": "http://schemas.microsoft.com/windows/2004/02/mit/task"}
 
@@ -154,8 +154,8 @@ class StaleTaskTests(unittest.TestCase):
 
     def test_detects_a_task_left_behind_by_a_moved_installation(self):
         autostart.task_action = lambda: (
-            r"C:\Users\zimba\Downloads\netpulse-github\netpulse\pythonw.exe",
-            r'"C:\Users\zimba\Downloads\netpulse-github\netpulse\main.py" --tray')
+            r"C:\Users\zimba\Downloads\netvitals-github\netvitals\pythonw.exe",
+            r'"C:\Users\zimba\Downloads\netvitals-github\netvitals\main.py" --tray')
         self.assertFalse(autostart.task_matches_this_copy())
 
     def test_no_task_is_not_a_mismatch(self):

@@ -19,7 +19,7 @@ from PySide6.QtWidgets import QApplication
 
 _app = QApplication.instance() or QApplication([])
 
-from netpulse.ui.widgets import WanIpChip           # noqa: E402
+from netvitals.ui.widgets import WanIpChip           # noqa: E402
 
 
 class FakeResolver:
@@ -84,7 +84,7 @@ class ChipStateTests(unittest.TestCase):
 
     def test_the_patience_threshold_is_shorter_than_the_backoff_ladder(self):
         """Otherwise it would sit on 'retrying…' long after it had given up."""
-        from netpulse.collectors import wanip
+        from netvitals.collectors import wanip
         self.assertLess(WanIpChip.PATIENCE, len(wanip.RETRY_BACKOFF))
 
 

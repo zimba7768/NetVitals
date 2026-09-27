@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   build:
-    name: Build NetPulse.exe
+    name: Build NetVitals.exe
     runs-on: windows-latest
 
     steps:
@@ -48,28 +48,28 @@ jobs:
         run: python main.py --write-ico
 
       - name: Build
-        run: python -m PyInstaller --noconfirm --clean netpulse.spec
+        run: python -m PyInstaller --noconfirm --clean netvitals.spec
 
       - name: Check the executable is sane
         run: |
-          if (-not (Test-Path dist\NetPulse.exe)) { throw "NetPulse.exe was not produced" }
-          $size = (Get-Item dist\NetPulse.exe).Length
-          Write-Host "Built dist\NetPulse.exe ($([math]::Round($size/1MB,1)) MB)"
+          if (-not (Test-Path dist\NetVitals.exe)) { throw "NetVitals.exe was not produced" }
+          $size = (Get-Item dist\NetVitals.exe).Length
+          Write-Host "Built dist\NetVitals.exe ($([math]::Round($size/1MB,1)) MB)"
           if ($size -lt 10MB) { throw "Executable is suspiciously small - the build is probably incomplete" }
 
       - name: Upload as a run artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NetPulse-exe
-          path: dist/NetPulse.exe
+          name: NetVitals-exe
+          path: dist/NetVitals.exe
 
       - name: Write the release notes
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          $hash = (Get-FileHash dist\NetPulse.exe -Algorithm SHA256).Hash
-          $size = [math]::Round((Get-Item dist\NetPulse.exe).Length / 1MB, 1)
+          $hash = (Get-FileHash dist\NetVitals.exe -Algorithm SHA256).Hash
+          $size = [math]::Round((Get-Item dist\NetVitals.exe).Length / 1MB, 1)
           @"
-          ## NetPulse ${{ github.ref_name }}
+          ## NetVitals ${{ github.ref_name }}
 
           A network usage monitor for Windows — upload and download per hour,
           day, week, month and year, broken down by application, with a log of
@@ -77,7 +77,7 @@ jobs:
 
           ### Download
 
-          **[NetPulse.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/NetPulse.exe)** — $size MB, no Python required.
+          **[NetVitals.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/NetVitals.exe)** — $size MB, no Python required.
 
           Put it anywhere and run it. For the per-application breakdown,
           right-click it and choose **Run as administrator**; everything else
@@ -104,7 +104,7 @@ jobs:
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Release $tag exists - replacing the executable"
-            gh release upload $tag dist/NetPulse.exe --clobber
+            gh release upload $tag dist/NetVitals.exe --clobber
           } else {
-            gh release create $tag dist/NetPulse.exe --title "NetPulse $tag" --notes-file notes.md
+            gh release create $tag dist/NetVitals.exe --title "NetVitals $tag" --notes-file notes.md
           }

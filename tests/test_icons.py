@@ -21,8 +21,8 @@ from PySide6.QtGui import QGuiApplication
 
 _app = QGuiApplication.instance() or QGuiApplication([])
 
-from netpulse.ui.assets import ICO_SIZES, write_ico          # noqa: E402
-from netpulse.ui.tray import ICON_SIZES, app_icon, app_pixmap  # noqa: E402
+from netvitals.ui.assets import ICO_SIZES, write_ico          # noqa: E402
+from netvitals.ui.tray import ICON_SIZES, app_icon, app_pixmap  # noqa: E402
 
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
@@ -79,7 +79,7 @@ class PixmapTests(unittest.TestCase):
 class IcoContainerTests(unittest.TestCase):
     def setUp(self) -> None:
         self.path = (Path(tempfile.gettempdir())
-                     / f"netpulse-test-{os.getpid()}.ico")
+                     / f"netvitals-test-{os.getpid()}.ico")
         self.assertIsNotNone(write_ico(self.path), "write_ico reported failure")
         self.blob = self.path.read_bytes()
 
