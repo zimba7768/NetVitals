@@ -12,6 +12,7 @@ from .collectors.files import FileTracker
 from .collectors.net_etw import EtwNetCollector
 from .collectors.net_system import (DIRECT, VPN, SystemNetCollector,
                                     vpn_active)
+from .collectors.probes import ProbeCollector
 from .collectors.wanip import WanIpResolver
 from .config import data_dir, is_packaged
 from .log import RollingLog
@@ -39,6 +40,10 @@ class Engine(QObject):
         #: Read on demand by the interface, not sampled on the loop: a
         #: connection table is a snapshot, not a rate.
         self.connections = ConnectionCollector()
+        #: Runs on its own thread — a TCP connect can take seconds to fail,
+        #: and there is no reading that off the sampling loop without
+        #: stalling everything else it does every second.
+        self.probes = ProbeCollector()
         self.etw = EtwNetCollector()
         self.files = FileTracker(db, settings, on_new=self._on_file,
                                  link_of=self.current_link)
@@ -102,6 +107,8 @@ class Engine(QObject):
             self.files.start()
         if self.settings.get("show_wan_ip", True):
             self.wan.start()
+        if self.settings.get("run_probes", True):
+            self.probes.start()
         self.db.rollup(since=0)          # heal anything a previous crash left behind
         self.system.reset()
         self._stop.clear()
@@ -116,6 +123,7 @@ class Engine(QObject):
         self.files.stop()
         self.etw.stop()
         self.wan.stop()
+        self.probes.stop()
         try:
             self.db.rollup(since=time.time() - 7200)
         except Exception:
@@ -134,6 +142,14 @@ class Engine(QObject):
             self.wan.refresh_now()
         else:
             self.wan.stop()
+
+    def enable_probes(self, enabled: bool) -> None:
+        self.settings.set("run_probes", bool(enabled))
+        if enabled:
+            self.probes.start()
+            self.probes.refresh_now()
+        else:
+            self.probes.stop()
 
     def enable_per_app(self, enabled: bool) -> None:
         self.settings.set("track_per_app", bool(enabled))

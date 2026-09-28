@@ -39,6 +39,8 @@ SHOTS = [
      "VPN traffic measured separately, so tunnelled and direct are never added together."),
     (5, "05-interfaces.png",
      "Every adapter, what it is counted as, and what it is carrying right now."),
+    (7, "06-probes.png",
+     "Reachability and latency checks that need no administrator rights."),
 ]
 
 
@@ -147,6 +149,19 @@ def main() -> int:
         return made
 
     engine.connections.snapshot = demo_connections
+
+    # The real collector opens live TCP connections and can take a full pass
+    # to settle, which a screenshot has no business waiting on — and doing
+    # so during image generation would make outbound connections for no
+    # reason. Demo results only.
+    from netvitals.collectors.probes import TARGETS as PROBE_TARGETS
+    engine.probes.snapshot = lambda: [
+        {"label": label, "host": host, "port": port, "note": note,
+         "ok": ok, "latency_ms": latency, "error": error, "checked_at": time.time()}
+        for (label, host, port, note), (ok, latency, error) in zip(
+            PROBE_TARGETS,
+            [(True, 14.0, ""), (True, 31.0, ""), (True, 48.0, "")])
+    ]
 
     window = MainWindow(db, engine, settings)
     window.resize(WIDTH, HEIGHT)

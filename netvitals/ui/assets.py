@@ -205,6 +205,18 @@ def nav_icon(kind: str, color: str, size: int = 18) -> QIcon:
         p.setPen(pen)
         p.drawLine(QPointF(s * 0.33, s * 0.36), QPointF(s * 0.67, s * 0.64))
         p.setPen(Qt.NoPen)
+    elif kind == "probes":
+        # A signal source with reach fanning out from it: the shape of "is it
+        # there, and how far does the answer travel" — a ping, not a stream.
+        p.drawEllipse(QPointF(s * 0.5, s * 0.86), s * 0.09, s * 0.09)
+        pen = QPen(c, s * 0.09)
+        pen.setCapStyle(Qt.RoundCap)
+        p.setPen(pen)
+        for radius, span in ((s * 0.28, 130), (s * 0.46, 110)):
+            rect = QRectF(s * 0.5 - radius, s * 0.86 - radius,
+                          radius * 2, radius * 2)
+            p.drawArc(rect, (90 - span / 2) * 16, span * 16)
+        p.setPen(Qt.NoPen)
     elif kind == "settings":
         cx = cy = s / 2
         body = s * 0.33          # radius of the gear body

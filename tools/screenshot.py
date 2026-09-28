@@ -133,6 +133,18 @@ def main() -> int:
     engine.wan.source = "ipify.org"
     engine.wan.checked_at = now_stamp
 
+    # The background thread has not had time to run a real pass, so the
+    # Probes page would otherwise show every row stuck on "Checking…".
+    from netvitals.collectors.probes import TARGETS as PROBE_TARGETS
+    engine.probes.snapshot = lambda: [
+        {"label": label, "host": host, "port": port, "note": note,
+         "ok": ok, "latency_ms": latency, "error": error,
+         "checked_at": now_stamp}
+        for (label, host, port, note), (ok, latency, error) in zip(
+            PROBE_TARGETS,
+            [(True, 14.0, ""), (True, 31.0, ""), (False, 0.0, "timed out")])
+    ]
+
     # Synthetic live trace so the speed graph has something to draw.
     random.seed(3)
     now = time.time()
@@ -154,7 +166,8 @@ def main() -> int:
     QCoreApplication.processEvents()
 
     pages = [(0, "dashboard"), (1, "history"), (2, "applications"),
-             (3, "files"), (5, "interfaces"), (6, "connections"), (7, "settings")]
+             (3, "files"), (5, "interfaces"), (6, "connections"),
+             (7, "probes"), (8, "settings")]
     for index, name in pages:
         window.nav_group.button(index).setChecked(True)
         window.stack.setCurrentIndex(index)

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 APP_NAME = "NetVitals"
-APP_VERSION = "1.7.0"
+APP_VERSION = "1.8.0"
 
 IS_WINDOWS = sys.platform.startswith("win")
 
@@ -159,6 +159,7 @@ DEFAULTS: dict[str, Any] = {
     "watch_folders": None,            # None -> default_watch_folders() at load
     "read_browser_history": True,
     "show_wan_ip": True,              # needs one small outbound request
+    "run_probes": True,               # periodic TCP-connect reachability checks
     "min_file_bytes": 16 * 1024,      # ignore trivial files (temp, .crdownload stubs)
     "ignore_extensions": [".tmp", ".crdownload", ".part", ".partial", ".download"],
     # --- retention (days); 0 means "keep forever" -------------------------

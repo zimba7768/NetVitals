@@ -118,6 +118,16 @@ def cell(text: str, align=Qt.AlignVCenter | Qt.AlignLeft, color: str | None = No
     return item
 
 
+def seconds_ago(ts: float) -> str:
+    """A short "how long ago" string for a value that updates every few seconds."""
+    elapsed = max(0.0, time.time() - ts)
+    if elapsed < 1.5:
+        return "just now"
+    if elapsed < 60:
+        return f"{int(elapsed)}s ago"
+    return f"{int(elapsed // 60)}m ago"
+
+
 class Page(QWidget):
     """Common page chrome: title, hint and a scrollable body."""
 
@@ -790,6 +800,94 @@ class InterfacesPage(Page):
         self.refresh()
 
 
+# ---------------------------------------------------------------------------
+# probes
+# ---------------------------------------------------------------------------
+class ProbesPage(Page):
+    """Is the internet actually reachable, and how quickly does it answer.
+
+    A raw ICMP ping needs administrator rights on Windows, so this asks the
+    same question with a plain TCP connect instead — open a socket, time how
+    long the handshake takes, close it. Nothing is sent or read beyond that,
+    and it needs no elevation, so it runs the same way in every build.
+
+    The targets are picked to be diagnostic rather than just "up" or "down":
+    two independent addresses (so one being blocked does not look like the
+    whole internet being gone) and one reached by name (so a DNS failure
+    shows up on its own row instead of looking like a routing problem).
+    """
+
+    def __init__(self, db, engine, settings, parent=None) -> None:
+        super().__init__(
+            "Probes",
+            "Whether the path out is actually working, checked every "
+            f"{int(engine.probes.interval)} seconds.",
+            parent)
+        self.db, self.engine, self.settings = db, engine, settings
+
+        card = Card("Reachability", "TCP connect — no ping, no admin rights")
+        self.table = make_table(
+            ["Target", "Status", "Latency", "Checked"], 0, {2, 3})
+        card.add(self.table, 1)
+        self.content.addWidget(card, 1)
+
+        self.note = QLabel("")
+        self.note.setObjectName("CardHint")
+        self.note.setWordWrap(True)
+        self.content.addWidget(self.note)
+
+    def refresh(self) -> None:
+        try:
+            rows = self.engine.probes.snapshot()
+        except Exception:
+            rows = []
+        self.table.setRowCount(len(rows))
+
+        reachable = 0
+        for i, row in enumerate(rows):
+            checked = seconds_ago(row["checked_at"]) if row["checked_at"] else "—"
+            if row["ok"] is None:
+                status, tint = "Checking…", theme.MUTED
+                latency = "—"
+            elif row["ok"]:
+                reachable += 1
+                status, tint = "Reachable", theme.GOOD
+                latency = f"{row['latency_ms']:.0f} ms"
+            else:
+                status, tint = row["error"].capitalize() or "Unreachable", theme.CRITICAL
+                latency = "—"
+
+            self.table.setItem(i, 0, cell(row["label"]))
+            self.table.setItem(i, 1, cell(status, color=tint))
+            self.table.setItem(i, 2, cell(latency, Qt.AlignVCenter | Qt.AlignRight,
+                                          tint if row["ok"] else theme.MUTED))
+            self.table.setItem(i, 3, cell(checked, Qt.AlignVCenter | Qt.AlignRight,
+                                          theme.TEXT_SECONDARY))
+
+        if not rows:
+            self.note.setText("No probe targets are configured.")
+            return
+
+        checking = sum(1 for r in rows if r["ok"] is None)
+        if checking:
+            self.note.setText("Checking for the first time — results appear "
+                              "as each target answers.")
+            return
+        notes = " · ".join(f"{r['label'].split(' (')[0]}: {r['note']}"
+                           for r in rows)
+        if reachable == len(rows):
+            summary = f"All {len(rows)} targets reachable."
+        elif reachable:
+            summary = f"{reachable} of {len(rows)} targets reachable."
+        else:
+            summary = ("Nothing answered. That usually means the network "
+                       "itself is down rather than one blocked service.")
+        self.note.setText(summary + "  " + notes)
+
+    def refresh_live(self) -> None:
+        self.refresh()
+
+
 VPN_SECTIONS = [
     ("overview", "Overview"),
     ("history", "History"),
@@ -948,6 +1046,21 @@ class SettingsPage(Page):
         log_holder = QWidget()
         log_holder.setLayout(log_row)
         collection.add(log_holder)
+
+        self.probes_check = QCheckBox(
+            "Check reachability of a few well-known hosts periodically")
+        self.probes_check.setChecked(settings.get("run_probes", True))
+        self.probes_check.toggled.connect(engine.enable_probes)
+        collection.add(self.probes_check)
+
+        probes_note = QLabel(
+            "A plain TCP connection, opened and immediately closed, to three "
+            f"fixed addresses every {int(engine.probes.interval)} seconds — "
+            "the Probes page. No ping, so no administrator rights are needed.")
+        probes_note.setObjectName("CardHint")
+        probes_note.setWordWrap(True)
+        probes_note.setContentsMargins(26, 0, 0, 4)
+        collection.add(probes_note)
 
         min_row = QHBoxLayout()
         min_row.addWidget(QLabel("Ignore files smaller than"))

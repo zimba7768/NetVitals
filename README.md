@@ -37,6 +37,11 @@
   what it is counted as, and what it is carrying right now. This is where the
   direct/VPN split shows its working: if an adapter were classified wrongly,
   every total would be subtly off with nothing to inspect.
+- **A Probes page** — whether the path out is actually working, checked every
+  20 seconds by opening and closing a plain TCP connection to three fixed
+  targets (no ICMP ping, so no administrator rights). Two independent
+  addresses and one reached by name, so a blocked provider, a DNS failure and
+  the whole network being down each look different from one another.
 - **A separate VPN tab** — the same overview, history, applications and files,
   restricted to what actually went through the tunnel. The main pages then show
   direct traffic only, so the two are never added together.
@@ -296,7 +301,7 @@ changes included.
 
 ```bash
 python -m pip install -r requirements.txt
-python -m unittest discover -s tests -v   # 245 tests
+python -m unittest discover -s tests -v   # 262 tests
 python -m pyflakes netvitals main.py tools tests
 ```
 
@@ -362,13 +367,14 @@ netvitals/
     net_system.py           adapter counter sampling
     net_etw.py              per-process attribution via ETW
     files.py                folder watching + browser history
+    connections.py          live connection table, per application
+    probes.py               TCP-connect reachability checks
+    wanip.py                public IP lookup
   ui/
     theme.py                colour roles and stylesheet
     assets.py               generated icons and control artwork
     widgets.py              cards, stat tiles, both charts
-    pages.py                the pages, including VPN, Interfaces, Connections
-    collectors/
-    connections.py          live connection table, per application
+    pages.py                the pages, including VPN, Interfaces, Connections, Probes
     main_window.py          sidebar navigation and refresh clock
     tray.py                 notification-area icon and app icon
 tests/                      storage, link-split, autostart and icon tests
