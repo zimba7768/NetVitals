@@ -162,6 +162,63 @@ class ReadFirefoxTests(unittest.TestCase):
         self.assertEqual(len(calls), 1)
 
 
+class StartupTests(unittest.TestCase):
+    """Folder-watch setup must never be able to block the caller of start().
+
+    At application launch the caller is the interface thread, before the
+    window is even shown — exactly where a stalled network or cloud-virtual
+    drive turning a plain isdir() into a multi-second wait would be most
+    damaging.
+    """
+
+    def setUp(self) -> None:
+        self.dir = tempfile.mkdtemp(prefix="netvitals-startup-")
+        self.db = Database(os.path.join(self.dir, f"n_{time.time_ns()}.db"))
+        self._real_isdir = os.path.isdir
+
+    def tearDown(self) -> None:
+        files_module.os.path.isdir = self._real_isdir
+        self.db.close()
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def test_start_returns_immediately_even_when_a_folder_check_is_slow(self) -> None:
+        slow_root = os.path.join(self.dir, "slow-drive")
+        os.makedirs(slow_root, exist_ok=True)
+        real_isdir = self._real_isdir
+
+        def slow_isdir(path):
+            if path == slow_root:
+                time.sleep(0.3)
+            return real_isdir(path)
+
+        files_module.os.path.isdir = slow_isdir
+        settings = FakeSettings(watch_folders=[slow_root])
+        tracker = FileTracker(self.db, settings)
+        try:
+            before = time.monotonic()
+            tracker.start()
+            elapsed = time.monotonic() - before
+            self.assertLess(elapsed, 0.1,
+                            "start() waited on the folder check itself")
+        finally:
+            tracker.stop()
+
+    def test_status_eventually_reports_what_start_found(self) -> None:
+        root = os.path.join(self.dir, "watched")
+        os.makedirs(root, exist_ok=True)
+        settings = FakeSettings(watch_folders=[root])
+        tracker = FileTracker(self.db, settings)
+        tracker.start()
+        try:
+            deadline = time.monotonic() + 5.0
+            while time.monotonic() < deadline and tracker.status == "starting…":
+                time.sleep(0.01)
+            self.assertNotEqual(tracker.status, "starting…")
+        finally:
+            tracker.stop()
+        self.assertEqual(tracker.status, "stopped")
+
+
 class ScanBrowsersTests(unittest.TestCase):
     """The pass as a whole: one known-paths lookup, not one per record."""
 

@@ -100,41 +100,73 @@ class FileTracker:
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self._observer_thread: threading.Thread | None = None
         self._browser_scan_ts = 0.0
-        self.status = "stopped"
+        self.status = "starting…"
 
     # ------------------------------------------------------------------ start
     def start(self) -> bool:
+        """Start tracking. Returns immediately; ``self.status`` catches up.
+
+        Setting up folder watching used to happen here, synchronously, on
+        whichever thread called ``start()`` — at application launch, that is
+        the interface thread, before the window has even been shown. Checking
+        whether a folder exists and asking the OS to watch it can each block
+        for a long time on a folder that lives on a network or cloud-virtual
+        drive: Google Drive's streaming mode and similar are notorious for
+        turning a plain ``os.path.isdir()`` into a stalled network round trip
+        rather than an instant local answer. None of that belongs on a thread
+        the interface is waiting on, so it now happens on one of its own; the
+        settle loop starts immediately regardless of how long watching takes
+        to come up, and ``self.status`` reports the outcome once it is known.
+        """
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._loop, name="file-tracker", daemon=True)
+        self._thread.start()
+        self._observer_thread = threading.Thread(
+            target=self._start_observer, name="file-watch-setup", daemon=True)
+        self._observer_thread.start()
+        return True
+
+    def _start_observer(self) -> None:
         folders = [f for f in self.settings.get("watch_folders", []) if os.path.isdir(f)]
+        if self._stop.is_set():
+            return
         self._roots = folders
         if HAVE_WATCHDOG and folders:
             try:
-                self._observer = Observer()
+                observer = Observer()
                 handler = _Handler(self)
                 for folder in folders:
-                    self._observer.schedule(handler, folder, recursive=True)
-                self._observer.start()
+                    observer.schedule(handler, folder, recursive=True)
+                observer.start()
+                if self._stop.is_set():
+                    # stop() ran while this was still setting up — leave
+                    # nothing behind for it to have missed.
+                    observer.stop()
+                    return
+                self._observer = observer
                 self.status = f"watching {len(folders)} folder(s)"
             except Exception as exc:
-                self._observer = None
                 self.status = f"folder watching unavailable: {exc}"
         elif not HAVE_WATCHDOG:
             self.status = "watchdog not installed"
         else:
             self.status = "no folders configured"
 
-        self._stop.clear()
-        self._thread = threading.Thread(target=self._loop, name="file-tracker", daemon=True)
-        self._thread.start()
-        return self._observer is not None
-
     def stop(self) -> None:
         self._stop.set()
         # Join before returning: restart() clears the flag again immediately and
-        # a surviving worker would double up on the new one.
+        # a surviving worker would double up on the new one. Both joins are
+        # bounded rather than unconditional — a thread genuinely stuck inside
+        # a hung network call is exactly the case this cannot wait forever
+        # for, so it is left to die with the process instead.
         if self._thread is not None and self._thread.is_alive():
             self._thread.join(timeout=4)
         self._thread = None
+        if self._observer_thread is not None and self._observer_thread.is_alive():
+            self._observer_thread.join(timeout=4)
+        self._observer_thread = None
         if self._observer is not None:
             try:
                 self._observer.stop()
