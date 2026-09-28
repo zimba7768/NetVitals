@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 APP_NAME = "NetVitals"
-APP_VERSION = "1.8.3"
+APP_VERSION = "1.8.4"
 
 IS_WINDOWS = sys.platform.startswith("win")
 
@@ -192,7 +192,11 @@ class Settings:
                     self._data.update(raw)
             except (OSError, ValueError):
                 pass
-            if not self._data.get("watch_folders"):
+            # None means "never configured" and gets the defaults; an empty
+            # list means the user removed every one of them on purpose, and
+            # must stay empty rather than quietly growing the defaults back
+            # on the next launch.
+            if self._data.get("watch_folders") is None:
                 self._data["watch_folders"] = default_watch_folders()
 
     def save(self) -> None:

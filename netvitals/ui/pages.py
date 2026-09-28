@@ -664,26 +664,48 @@ class FilesPage(Page):
             + ("" if self.settings.get("track_files")
                else "  —  file tracking is switched off in Settings"))
 
-        self.table.setRowCount(len(files))
-        for i, f in enumerate(files):
-            name = cell(truncate(f["name"], 46))
-            name.setToolTip(f["path"])
-            self.table.setItem(i, 0, name)
-            self.table.setItem(i, 1, cell(format_bytes(f["size"], unit),
-                                          Qt.AlignVCenter | Qt.AlignRight))
-            self.table.setItem(i, 2, cell(format_when(f["ts"]),
-                                          Qt.AlignVCenter | Qt.AlignLeft,
-                                          theme.TEXT_SECONDARY))
-            self.table.setItem(i, 3, cell(truncate(f["source"] or "—", 30),
-                                          Qt.AlignVCenter | Qt.AlignLeft,
-                                          theme.DOWN if f["source"] else theme.MUTED))
-            self.table.setItem(i, 4, cell(f["app"] or "—",
-                                          Qt.AlignVCenter | Qt.AlignLeft,
-                                          theme.TEXT_SECONDARY))
-            folder = cell(truncate(f["folder"], 40), Qt.AlignVCenter | Qt.AlignLeft,
-                          theme.MUTED)
-            folder.setToolTip(f["folder"])
-            self.table.setItem(i, 5, folder)
+        # Five of these six columns resize to fit their contents on every
+        # change by default, which is what "ResizeToContents" means — with a
+        # timer rebuilding this table every few seconds, that turned into a
+        # full column-width recalculation on every one of a few hundred rows,
+        # every pass, and with folder paths this long (a synced cloud drive's
+        # nesting easily runs past 80 characters) that recalculation is real
+        # work rather than the trivial pass it is for a short label. Holding
+        # each column fixed for the duration of the rebuild and sizing them
+        # once at the end turns an O(rows) resize into a single O(rows) pass
+        # instead of one per row.
+        header = self.table.horizontalHeader()
+        to_content_resize = [
+            i for i in range(self.table.columnCount())
+            if header.sectionResizeMode(i) == QHeaderView.ResizeToContents]
+        for i in to_content_resize:
+            header.setSectionResizeMode(i, QHeaderView.Interactive)
+        self.table.setUpdatesEnabled(False)
+        try:
+            self.table.setRowCount(len(files))
+            for i, f in enumerate(files):
+                name = cell(truncate(f["name"], 46))
+                name.setToolTip(f["path"])
+                self.table.setItem(i, 0, name)
+                self.table.setItem(i, 1, cell(format_bytes(f["size"], unit),
+                                              Qt.AlignVCenter | Qt.AlignRight))
+                self.table.setItem(i, 2, cell(format_when(f["ts"]),
+                                              Qt.AlignVCenter | Qt.AlignLeft,
+                                              theme.TEXT_SECONDARY))
+                self.table.setItem(i, 3, cell(truncate(f["source"] or "—", 30),
+                                              Qt.AlignVCenter | Qt.AlignLeft,
+                                              theme.DOWN if f["source"] else theme.MUTED))
+                self.table.setItem(i, 4, cell(f["app"] or "—",
+                                              Qt.AlignVCenter | Qt.AlignLeft,
+                                              theme.TEXT_SECONDARY))
+                folder = cell(truncate(f["folder"], 40), Qt.AlignVCenter | Qt.AlignLeft,
+                              theme.MUTED)
+                folder.setToolTip(f["folder"])
+                self.table.setItem(i, 5, folder)
+        finally:
+            self.table.setUpdatesEnabled(True)
+            for i in to_content_resize:
+                header.setSectionResizeMode(i, QHeaderView.ResizeToContents)
 
 
 
