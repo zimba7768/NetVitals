@@ -301,7 +301,7 @@ changes included.
 
 ```bash
 python -m pip install -r requirements.txt
-python -m unittest discover -s tests -v   # 262 tests
+python -m unittest discover -s tests -v   # 269 tests
 python -m pyflakes netvitals main.py tools tests
 ```
 

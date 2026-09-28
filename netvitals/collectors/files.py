@@ -293,7 +293,23 @@ class FileTracker:
             return None
 
     def scan_browsers(self, lookback_days: int = 30) -> int:
+        """Merge recent browser download history into the file log.
+
+        Runs every 60 seconds for as long as the app is open, so the same
+        history rows are read again and again — most of them for files this
+        already logged the first time. Filesystem checks (``getsize``,
+        ``isfile``) are the expensive part of merging a record, and on a
+        watched folder that lives on a cloud-sync drive (OneDrive Files
+        On-Demand and similar) each one can block for a real amount of time
+        rather than the microseconds a local disk costs. Looking up which
+        paths are already logged *once*, before touching the filesystem at
+        all, means a library of thousands of old downloads costs one query
+        instead of thousands of stats on every single pass — the difference
+        between a scan finishing invisibly and one that hangs the window for
+        minutes while it re-verifies files it already knows about.
+        """
         cutoff = time.time() - lookback_days * 86400
+        known = self.db.known_paths(limit=20000)
         added = 0
         for browser, path in self.browser_profiles():
             snapshot = self._copy_locked(path)
@@ -301,11 +317,11 @@ class FileTracker:
                 continue
             try:
                 if path.name == "places.sqlite":
-                    records = self._read_firefox(snapshot, cutoff)
+                    records = self._read_firefox(snapshot, cutoff, known)
                 else:
                     records = self._read_chromium(snapshot, cutoff)
                 for rec in records:
-                    added += self._merge_record(rec, browser)
+                    added += self._merge_record(rec, browser, known)
             except Exception:
                 pass
             finally:
@@ -343,7 +359,7 @@ class FileTracker:
         return out
 
     @staticmethod
-    def _read_firefox(dbfile: Path, cutoff: float) -> list[dict]:
+    def _read_firefox(dbfile: Path, cutoff: float, known: set[str]) -> list[dict]:
         out: list[dict] = []
         conn = sqlite3.connect(f"file:{dbfile}?immutable=1", uri=True)
         try:
@@ -367,18 +383,27 @@ class FileTracker:
                 local = local[1:]                     # /C:/Users/... -> C:/Users/...
             local = os.path.normpath(local)
             size = 0
-            try:
-                size = os.path.getsize(local)
-            except OSError:
-                pass
+            # Already logged: its size is on record, and re-reading it from
+            # disk is the exact per-row filesystem cost this method exists
+            # to avoid.
+            if local not in known:
+                try:
+                    size = os.path.getsize(local)
+                except OSError:
+                    pass
             out.append({"path": local, "size": size, "ts": ts, "url": url or ""})
         conn.close()
         return out
 
-    def _merge_record(self, rec: dict, browser: str) -> int:
+    def _merge_record(self, rec: dict, browser: str, known: set[str]) -> int:
         path, url = rec["path"], rec["url"]
         source = host_of(url) if url else None
         self.db.enrich_file_source(path, source or "", browser)
+        if path in known:
+            # Already in the file log — from the folder watcher or an earlier
+            # scan. Nothing left to do but the source enrichment above, so
+            # stop here rather than re-stating a file that has not moved.
+            return 0
         size = rec["size"]
         if not size:
             try:
