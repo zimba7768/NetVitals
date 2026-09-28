@@ -221,6 +221,11 @@ class DashboardPage(Page):
         self.apps_note.setWordWrap(True)
         self.apps_note.hide()
         apps_card.add(self.apps_note)
+        self.apps_card = apps_card
+        # A packaged build can never fill this card, so reserving half the row
+        # for it leaves a hole. Give the space to the file log instead; the
+        # Applications page still explains where the figures went.
+        apps_card.setVisible(not is_packaged())
         columns.addWidget(apps_card, 1)
 
         files_card = Card("Recent downloads")
@@ -290,12 +295,16 @@ class DashboardPage(Page):
             self.apps_table.setItem(i, 3, share)
 
         if not rows:
+            # Blank column headers above an explanation read as something
+            # broken. With nothing to tabulate, show only the reason.
             self.apps_note.setText(
                 self.engine.per_app_note()
                 or "No per-application traffic recorded yet today.")
             self.apps_note.show()
+            self.apps_table.hide()
         else:
             self.apps_note.hide()
+            self.apps_table.show()
 
         files = self.db.recent_files(limit=8, link=self.link)
         self._file_paths = [f["path"] for f in files]

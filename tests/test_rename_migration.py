@@ -125,17 +125,74 @@ class FormerAutostartTests(unittest.TestCase):
 
     Windows keeps both names happily, so an upgrade would start the app twice:
     once as NetVitals, once as NetPulse from wherever that copy used to live.
+
+    None of these tests call the real thing on a real machine. An earlier
+    version did, and deleting a scheduled task is not something a test run
+    should do to the person running it — the same mistake as reading the real
+    %APPDATA% folder, one layer down.
     """
 
-    def test_it_reports_nothing_removed_off_windows(self) -> None:
+    def setUp(self) -> None:
         from netvitals import autostart
-        self.assertFalse(autostart.clear_former_autostart())
+        self.autostart = autostart
+        self._is_windows = autostart.IS_WINDOWS
+        self._run = autostart._run
+
+    def tearDown(self) -> None:
+        self.autostart.IS_WINDOWS = self._is_windows
+        self.autostart._run = self._run
+
+    def pretend(self, windows: bool, task_exists: bool,
+                delete_works: bool = True) -> list[list[str]]:
+        """Stand in for schtasks. Returns the commands it was asked to run."""
+        calls: list[list[str]] = []
+
+        def fake_run(args, **kwargs):
+            calls.append(list(args))
+            if "/Query" in args:
+                return (0 if task_exists else 1), ""
+            if "/Delete" in args:
+                return (0 if delete_works else 1), ""
+            return 1, ""
+
+        self.autostart.IS_WINDOWS = windows
+        self.autostart._run = fake_run
+        return calls
+
+    def test_it_does_nothing_off_windows(self) -> None:
+        self.pretend(windows=False, task_exists=True)
+        self.assertFalse(self.autostart.clear_former_autostart())
+
+    def test_it_removes_a_former_task_when_one_exists(self) -> None:
+        calls = self.pretend(windows=True, task_exists=True)
+        self.assertTrue(self.autostart.clear_former_autostart())
+        deletes = [c for c in calls if "/Delete" in c]
+        self.assertTrue(deletes, "nothing was deleted")
+        self.assertIn(self.autostart.FORMER_TASK_NAME, deletes[0])
+
+    def test_it_never_touches_the_current_task(self) -> None:
+        # Removing our own startup entry while tidying up the old one would
+        # be a spectacular own goal.
+        calls = self.pretend(windows=True, task_exists=True)
+        self.autostart.clear_former_autostart()
+        for call in calls:
+            self.assertNotIn(self.autostart.TASK_NAME, call)
+
+    def test_a_missing_task_is_not_an_error(self) -> None:
+        calls = self.pretend(windows=True, task_exists=False)
+        self.autostart.clear_former_autostart()
+        self.assertFalse([c for c in calls if "/Delete" in c],
+                         "tried to delete a task that does not exist")
+
+    def test_a_failed_delete_is_reported_as_nothing_removed(self) -> None:
+        self.pretend(windows=True, task_exists=True, delete_works=False)
+        self.assertFalse(self.autostart.clear_former_autostart())
 
     def test_the_former_names_are_the_ones_actually_used_before(self) -> None:
-        from netvitals import autostart
-        self.assertEqual(autostart.FORMER_TASK_NAME, "NetPulse")
-        self.assertEqual(autostart.FORMER_APP_KEY, "NetPulse")
-        self.assertNotEqual(autostart.TASK_NAME, autostart.FORMER_TASK_NAME)
+        self.assertEqual(self.autostart.FORMER_TASK_NAME, "NetPulse")
+        self.assertEqual(self.autostart.FORMER_APP_KEY, "NetPulse")
+        self.assertNotEqual(self.autostart.TASK_NAME,
+                            self.autostart.FORMER_TASK_NAME)
 
 
 if __name__ == "__main__":

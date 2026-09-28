@@ -292,8 +292,11 @@ def clear_former_autostart() -> bool:
                             winreg.KEY_SET_VALUE) as key:
             winreg.DeleteValue(key, FORMER_APP_KEY)
             removed = True
-    except OSError:
-        pass                              # not there, which is the normal case
+    except (OSError, ImportError):
+        # OSError: the value is not there, which is the normal case.
+        # ImportError: no winreg at all. Neither is a reason to lose the fact
+        # that the scheduled task above may already have been removed.
+        pass
     return removed
 
 

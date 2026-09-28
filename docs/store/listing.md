@@ -72,9 +72,16 @@ network monitor, bandwidth, data usage, VPN, upload download, traffic, metered
 - Declare a **windows.startupTask** extension for the start-with-Windows
   option. Windows shows the switch in Task Manager › Startup apps; the app's
   own checkbox is disabled in packaged builds and says so.
-- Privacy policy: required whenever a product collects anything. NetVitals
-  collects nothing and sends nothing except the optional IP lookup — say that
-  in one line rather than leaving the field empty.
+- Privacy policy URL: **https://github.com/zimba7768/NetVitals/blob/main/PRIVACY.md**
+  The Store requires one. PRIVACY.md is versioned with the application, so any
+  change to it is visible in the commit history.
+- Screenshots: `docs/store/01-dashboard.png` and the three beside it, rendered
+  at 1920x1080 by `tools/make_store_images.py`. They show the **packaged**
+  build with demo data — never the desktop build's per-application table,
+  which would advertise a feature the package does not have, and never real
+  usage. Captions are printed by that script.
+- App tile icon: `docs/store/store-tile-300.png` (300x300, strongly
+  recommended; the Store prefers it over the package icon).
 - The listing links to the desktop build. The Store's restrictions on sending
   users elsewhere concern *purchase* mechanisms; both builds here are free, and
   Website/Support URL are sanctioned fields for the project address.

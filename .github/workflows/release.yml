@@ -63,6 +63,44 @@ jobs:
           name: NetVitals-exe
           path: dist/NetVitals.exe
 
+      # --- Microsoft Store package -------------------------------------
+      # Built here rather than on a developer's machine so the package that
+      # goes to the Store is reproducible, and so nobody needs the Windows SDK
+      # locally: the runners already have it.
+      #
+      # Deliberately unsigned. The Store signs submissions with its own
+      # certificate, and signing it here would risk a publisher mismatch that
+      # fails validation.
+      - name: Build the application folder for packaging
+        run: python -m PyInstaller --noconfirm --clean netvitals-dir.spec
+
+      - name: Stage the package
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python tools/make_msix.py
+
+      - name: Pack it
+        run: |
+          $sdk = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory |
+                 Where-Object Name -match '^10\.' | Sort-Object Name -Descending | Select-Object -First 1
+          $makeappx = Join-Path $sdk.FullName "x64\makeappx.exe"
+          if (-not (Test-Path $makeappx)) { throw "makeappx not found under $($sdk.FullName)" }
+          & $makeappx pack /d build\msix /p NetVitals.msix /o
+          if ($LASTEXITCODE -ne 0) { throw "makeappx failed" }
+
+      - name: Check the package is sane
+        run: |
+          if (-not (Test-Path NetVitals.msix)) { throw "NetVitals.msix was not produced" }
+          $size = (Get-Item NetVitals.msix).Length
+          Write-Host "Built NetVitals.msix ($([math]::Round($size/1MB,1)) MB)"
+          if ($size -lt 10MB) { throw "Package is suspiciously small - the build is probably incomplete" }
+
+      - name: Upload the package as a run artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NetVitals-msix
+          path: NetVitals.msix
+
       - name: Write the release notes
         if: startsWith(github.ref, 'refs/tags/')
         run: |
@@ -90,6 +128,13 @@ jobs:
           SHA-256: $hash
           ``````
 
+          ### Microsoft Store
+
+          The Store build is the same application without the per-application
+          breakdown, which Windows does not permit a packaged app to collect.
+          Everything else — totals, history, the direct/VPN split and the file
+          log — works identically.
+
           ### Running from source instead
 
           Clone the repository and use ``install.bat`` — see the README.
@@ -104,7 +149,7 @@ jobs:
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Release $tag exists - replacing the executable"
-            gh release upload $tag dist/NetVitals.exe --clobber
+            gh release upload $tag dist/NetVitals.exe NetVitals.msix --clobber
           } else {
-            gh release create $tag dist/NetVitals.exe --title "NetVitals $tag" --notes-file notes.md
+            gh release create $tag dist/NetVitals.exe NetVitals.msix --title "NetVitals $tag" --notes-file notes.md
           }

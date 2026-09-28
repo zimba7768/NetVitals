@@ -288,7 +288,7 @@ changes included.
 
 ```bash
 python -m pip install -r requirements.txt
-python -m unittest discover -s tests -v   # 196 tests
+python -m unittest discover -s tests -v   # 220 tests
 python -m pyflakes netvitals main.py tools tests
 ```
 
@@ -299,11 +299,34 @@ python tools/screenshot.py out/     # render every page offscreen, with demo dat
 python tools/smoketest.py           # run the real engine against real traffic
 python tools/diagnose-wanip.py 120  # watch the public-IP resolver work
 python tools/diagnose-split.py      # check the direct/VPN split against raw counters
+python tools/make_store_images.py   # render the Store listing screenshots
 ```
 
 `tools/screenshot.py` is how the images above are produced — it seeds a database
 with a year of plausible traffic and grabs each page with the offscreen Qt
 platform, so the interface can be reviewed without a desktop session.
+
+Tagging a release builds the Store package too, on the CI runners, which
+already carry the Windows SDK — so the package that goes to the Store is
+reproducible and nobody needs the SDK locally. It is attached to the release
+and uploaded as a run artifact.
+
+To build the **Microsoft Store package** yourself, run **`build-msix.bat`**. It builds a
+folder rather than a single file — a package needs the real layout — then stages
+it with a generated manifest and the tile images, and prints the `makeappx` command.
+The package is left **unsigned** on purpose: the Store signs what it accepts,
+and signing it yourself risks a publisher mismatch that fails validation.
+
+Installing it on your own machine is the opposite case, and needs a signature —
+Windows will not deploy a package whose publisher it cannot verify, and
+`-AllowUnsigned` only covers publishers in the *unsigned namespace*, which a
+Store identity deliberately is not. Sign with a self-signed certificate whose
+subject equals the manifest's `Publisher`, trust it once in
+`Cert:\LocalMachine\TrustedPeople`, then `Add-AppxPackage`. The script prints
+the commands. The manifest is generated from `APP_VERSION` so the package
+version cannot drift, and `tests/test_packaging.py` checks the rules that only
+fail at certification: a four-part version ending in zero, `runFullTrust` without
+`allowElevation`, and a startup task that is declared but off by default.
 
 To build the standalone executable yourself, run **`build-exe.bat`** (or
 `pyinstaller netvitals.spec`). The result is `dist\NetVitals.exe`. The same spec
@@ -427,6 +450,13 @@ work and toggle a VPN while it does.
 
 **I ticked "start when I sign in" but it's not in Task Manager's Startup tab.**
 Expected if it registered as a scheduled task — check `taskschd.msc` instead.
+
+## Privacy
+
+NetVitals collects nothing and sends nothing, except one optional request to
+discover your public IP address — which has an off switch. Everything it
+records stays in a single file on your own machine. The full statement is in
+[PRIVACY.md](PRIVACY.md).
 
 ## Licence
 

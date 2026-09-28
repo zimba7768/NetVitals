@@ -147,6 +147,27 @@ class UiTests(unittest.TestCase):
         engine.etw.start()
         self.assertIn(PROJECT_URL, engine.etw.reason)
 
+    def test_the_dashboard_drops_the_card_it_can_never_fill(self) -> None:
+        # Reserving half the row for per-application traffic leaves a hole in
+        # a build that cannot collect any.
+        PackagedFlag(self, True)
+        page = pages.DashboardPage(self.db, self.engine(), self.settings)
+        self.assertFalse(page.apps_card.isVisibleTo(page))
+
+    def test_the_desktop_dashboard_keeps_it(self) -> None:
+        PackagedFlag(self, False)
+        page = pages.DashboardPage(self.db, self.engine(), self.settings)
+        self.assertTrue(page.apps_card.isVisibleTo(page))
+
+    def test_an_empty_table_is_hidden_behind_its_explanation(self) -> None:
+        # Blank column headers above a note read as breakage, not a statement.
+        PackagedFlag(self, False)
+        self.settings.set("track_per_app", False)
+        page = pages.DashboardPage(self.db, self.engine(), self.settings)
+        page.refresh()
+        self.assertFalse(page.apps_table.isVisibleTo(page))
+        self.assertTrue(page.apps_note.isVisibleTo(page))
+
 
 if __name__ == "__main__":
     unittest.main()
