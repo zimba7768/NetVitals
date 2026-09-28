@@ -23,3 +23,12 @@ netvitals-export.csv
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Signing material - a private key must never reach a public repository
+*.pfx
+*.cer
+*.pvk
+
+# Package build output
+*.msix
+*.appx
