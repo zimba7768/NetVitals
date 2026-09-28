@@ -4,10 +4,11 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import threading
 import time
 from datetime import datetime
 
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QColor, QDesktopServices, QFont
 from PySide6.QtWidgets import (QAbstractItemView, QButtonGroup, QCheckBox,
                                QComboBox, QFileDialog, QFrame, QGridLayout,
@@ -42,6 +43,17 @@ APP_PERIODS = [
     ("year", "This year"),
     ("all", "All time"),
 ]
+
+#: Rows the Files page asks for and shows. A library that has grown to
+#: thousands of entries does not need all of them on screen at once — this
+#: keeps both the query and the table-rebuild cheap regardless of how large
+#: the log has become, without a hard cap on how much history exists.
+FILES_DISPLAY_LIMIT = 300
+
+#: A search or folder browse is a deliberate wait; a typed character is not.
+#: Coalescing keystrokes into one query after this pause is what keeps the
+#: background loader from launching a fresh thread per character.
+SEARCH_DEBOUNCE_MS = 250
 
 
 def open_in_explorer(path: str, select: bool = True) -> None:
@@ -515,6 +527,24 @@ class AppsPage(Page):
 # files
 # ---------------------------------------------------------------------------
 class FilesPage(Page):
+    """The transferred-files log.
+
+    The database query and the browser-history rescan both used to run
+    directly on the interface thread, so anything that made either one slow —
+    a large accumulated log, a watched folder on a cloud-sync drive whose
+    filesystem calls can block on the network rather than answer instantly —
+    froze the whole window rather than just taking a moment. Both now run on
+    a background thread and hand their result back through a signal, which
+    Qt safely marshals onto this widget's own thread; the interface stays
+    responsive no matter how long the underlying work takes.
+    """
+
+    #: (request id, rows) from the background loader. The id lets a result
+    #: that arrives after a newer request was already sent be dropped, rather
+    #: than a slow search overwriting what a fast one already showed.
+    _results_ready = Signal(int, list)
+    _rescan_done = Signal(int)
+
     def __init__(self, db, engine, settings, parent=None, link: str = DIRECT) -> None:
         vpn = link == VPN
         super().__init__(
@@ -525,13 +555,25 @@ class FilesPage(Page):
             parent)
         self.db, self.engine, self.settings = db, engine, settings
         self.link = link
+        self._request_id = 0
+        self._paths: list[str] = []
+
+        self._results_ready.connect(self._apply_results)
+        self._rescan_done.connect(self._on_rescan_done)
 
         controls = QHBoxLayout()
         controls.setSpacing(10)
         self.search = QLineEdit()
         self.search.setPlaceholderText("Search by file name, source or folder…")
         self.search.setClearButtonEnabled(True)
-        self.search.textChanged.connect(lambda _: self.refresh())
+        # A query per keystroke would mean a query per keystroke reaching the
+        # database — coalesce a burst of typing into the one search that is
+        # actually meant.
+        self._search_timer = QTimer(self)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(SEARCH_DEBOUNCE_MS)
+        self._search_timer.timeout.connect(self.refresh)
+        self.search.textChanged.connect(lambda _: self._search_timer.start())
         controls.addWidget(self.search, 1)
 
         self.range_box = QComboBox()
@@ -548,22 +590,29 @@ class FilesPage(Page):
         self.summary.setObjectName("PageHint")
         self.content.addWidget(self.summary)
 
-        card = Card("Transferred files", "double-click a row to show it in Explorer")
+        card = Card("Transferred files", f"latest {FILES_DISPLAY_LIMIT}, "
+                    "double-click a row to show it in Explorer")
         self.table = make_table(
             ["Name", "Size", "When", "Source", "Via", "Folder"], 0, {1})
         self.table.itemDoubleClicked.connect(self._open_row)
         card.add(self.table, 1)
         self.content.addWidget(card, 1)
-        self._paths: list[str] = []
 
     def _rescan(self) -> None:
         self.rescan_button.setEnabled(False)
         self.rescan_button.setText("Scanning…")
-        added = 0
-        try:
-            added = self.engine.files.scan_browsers(lookback_days=365)
-        except Exception:
-            pass
+
+        def worker() -> None:
+            added = 0
+            try:
+                added = self.engine.files.scan_browsers(lookback_days=365)
+            except Exception:
+                pass
+            self._rescan_done.emit(added)
+
+        threading.Thread(target=worker, daemon=True, name="files-rescan").start()
+
+    def _on_rescan_done(self, added: int) -> None:
         self.rescan_button.setText("Rescan browsers")
         self.rescan_button.setEnabled(True)
         self.refresh()
@@ -577,7 +626,6 @@ class FilesPage(Page):
             open_in_explorer(self._paths[row])
 
     def refresh(self) -> None:
-        unit = self.settings.get("units", "auto")
         since = None
         choice = self.range_box.currentIndex()
         if choice == 1:
@@ -587,12 +635,32 @@ class FilesPage(Page):
         elif choice == 3:
             since = int(time.time() - 30 * 86400)
 
-        files = self.db.recent_files(limit=1000, search=self.search.text().strip(),
-                                     since=since, link=self.link)
+        self._request_id += 1
+        request_id = self._request_id
+        search = self.search.text().strip()
+        link = self.link
+        if not self.table.rowCount():
+            self.summary.setText("Loading…")
+
+        def worker() -> None:
+            try:
+                files = self.db.recent_files(limit=FILES_DISPLAY_LIMIT,
+                                             search=search, since=since, link=link)
+            except Exception:
+                files = []
+            self._results_ready.emit(request_id, files)
+
+        threading.Thread(target=worker, daemon=True, name="files-query").start()
+
+    def _apply_results(self, request_id: int, files: list[dict]) -> None:
+        if request_id != self._request_id:
+            return          # superseded by a newer request while this ran
+        unit = self.settings.get("units", "auto")
         self._paths = [f["path"] for f in files]
         total = sum(f["size"] for f in files)
+        capped = len(files) >= FILES_DISPLAY_LIMIT
         self.summary.setText(
-            f"{len(files):,} file(s) · {format_bytes(total, unit)}"
+            f"{len(files):,}{'+' if capped else ''} file(s) · {format_bytes(total, unit)}"
             + ("" if self.settings.get("track_files")
                else "  —  file tracking is switched off in Settings"))
 
