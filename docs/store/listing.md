@@ -31,6 +31,11 @@ when it arrived, and the address it came from.
 **Live throughput.** A two-minute rolling graph, plus a tray icon whose arrows
 brighten with activity.
 
+**Adapters and connections.** Which adapter is carrying what, and which
+application is talking to which host — grouped so a browser's thirty sockets to
+one host read as one line, and labelled with whether each conversation went
+through the tunnel.
+
 **Local and private.** One database file on your own machine. No account, no
 cloud, no telemetry. The only outbound request NetVitals ever makes is the
 optional public-IP lookup, and that has an off switch.
@@ -75,7 +80,7 @@ network monitor, bandwidth, data usage, VPN, upload download, traffic, metered
 - Privacy policy URL: **https://github.com/zimba7768/NetVitals/blob/main/PRIVACY.md**
   The Store requires one. PRIVACY.md is versioned with the application, so any
   change to it is visible in the commit history.
-- Screenshots: `docs/store/01-dashboard.png` and the three beside it, rendered
+- Screenshots: `docs/store/01-dashboard.png` and the four beside it, rendered
   at 1920x1080 by `tools/make_store_images.py`. They show the **packaged**
   build with demo data — never the desktop build's per-application table,
   which would advertise a feature the package does not have, and never real

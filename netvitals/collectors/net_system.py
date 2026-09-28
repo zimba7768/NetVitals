@@ -6,6 +6,7 @@ traffic.  Per-application attribution is layered on top by ``net_etw``.
 """
 from __future__ import annotations
 
+import socket
 import time
 
 try:
@@ -79,6 +80,10 @@ class SystemNetCollector:
         #: bytes/sec, per link: {"direct": (down, up), "vpn": (down, up)}
         self.last_rates: dict[str, tuple[float, float]] = {
             DIRECT: (0.0, 0.0), VPN: (0.0, 0.0)}
+        #: bytes/sec per adapter. The sampler already computes these to reach
+        #: the per-link totals; keeping them costs nothing and is the only
+        #: honest way to show which adapter is actually carrying traffic.
+        self.last_adapter_rates: dict[str, tuple[float, float]] = {}
         self.reset()
 
     # ------------------------------------------------------------------
@@ -93,6 +98,48 @@ class SystemNetCollector:
     def classified_interfaces(self) -> dict[str, str]:
         """Every adapter and how it is being treated — shown in Settings."""
         return {name: classify_adapter(name) for name in self.available_interfaces()}
+
+    def interface_details(self) -> list[dict]:
+        """Everything worth showing about each adapter, newest reading first.
+
+        Deliberately includes adapters that are ignored or down. Which adapter
+        is which, and why a given one does or does not count, is exactly the
+        question this page exists to answer — hiding the ones that do not
+        count would leave the user unable to check the arithmetic.
+        """
+        if psutil is None:
+            return []
+        try:
+            counters = psutil.net_io_counters(pernic=True)
+            stats = psutil.net_if_stats()
+            addresses = psutil.net_if_addrs()
+        except Exception:
+            return []
+
+        rows: list[dict] = []
+        for name in sorted(counters):
+            status = stats.get(name)
+            entries = addresses.get(name, [])
+            ipv4 = next((e.address for e in entries
+                         if getattr(e, "family", None) == socket.AF_INET), "")
+            counter = counters[name]
+            down_rate, up_rate = self.last_adapter_rates.get(name, (0.0, 0.0))
+            rows.append({
+                "name": name,
+                "kind": classify_adapter(name),
+                "up": bool(status and status.isup),
+                "ipv4": ipv4,
+                "speed": int(getattr(status, "speed", 0) or 0),   # Mbit/s, 0 = unknown
+                "received": int(counter.bytes_recv),
+                "sent": int(counter.bytes_sent),
+                "down_rate": down_rate,
+                "up_rate": up_rate,
+            })
+        # Carrying traffic first, then merely up, then the rest: the ones that
+        # matter should not be below a row of disconnected Wi-Fi adapters.
+        rows.sort(key=lambda r: (-(r["down_rate"] + r["up_rate"]),
+                                 not r["up"], r["name"].lower()))
+        return rows
 
     def _selected(self, counters: dict) -> list[str]:
         if self.interfaces:
@@ -131,6 +178,7 @@ class SystemNetCollector:
         elapsed = max(0.001, now - self._last_ts)
         physical_down = physical_up = 0
         vpn_down = vpn_up = 0
+        per_adapter: dict[str, tuple[float, float]] = {}
 
         for name in self._selected(counters):
             c = counters[name]
@@ -143,6 +191,7 @@ class SystemNetCollector:
             # Counters reset when an adapter is disabled or the driver reloads.
             down = down if down >= 0 else 0
             up = up if up >= 0 else 0
+            per_adapter[name] = (down / elapsed, up / elapsed)
             if classify_adapter(name) == VPN:
                 vpn_down += down
                 vpn_up += up
@@ -162,6 +211,7 @@ class SystemNetCollector:
         direct_up = max(0, physical_up - vpn_up)
 
         self._last_ts = now
+        self.last_adapter_rates = per_adapter
         self.last_rates = {
             DIRECT: (direct_down / elapsed, direct_up / elapsed),
             VPN: (vpn_down / elapsed, vpn_up / elapsed),

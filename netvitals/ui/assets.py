@@ -184,6 +184,27 @@ def nav_icon(kind: str, color: str, size: int = 18) -> QIcon:
         p.drawEllipse(QPointF(s * 0.5, s * 0.44), s * 0.11, s * 0.11)
         p.drawRoundedRect(QRectF(s * 0.43, s * 0.44, s * 0.14, s * 0.26),
                           s * 0.05, s * 0.05)
+    elif kind == "interfaces":
+        # A network port: the plainest shorthand for "the physical thing the
+        # traffic goes through", which is what this page is about.
+        p.drawRoundedRect(QRectF(s * 0.12, s * 0.30, s * 0.76, s * 0.46),
+                          s * 0.08, s * 0.08)
+        p.setBrush(QColor(theme.SIDEBAR))
+        for i in range(3):                      # the contacts inside the port
+            p.drawRect(QRectF(s * (0.26 + i * 0.20), s * 0.42, s * 0.09, s * 0.16))
+        p.setBrush(c)
+        p.drawRoundedRect(QRectF(s * 0.36, s * 0.10, s * 0.28, s * 0.22),
+                          s * 0.05, s * 0.05)   # the cable above it
+    elif kind == "connections":
+        # Two nodes joined: the shape of a conversation.
+        r = s * 0.15
+        p.drawEllipse(QPointF(s * 0.22, s * 0.25), r, r)
+        p.drawEllipse(QPointF(s * 0.78, s * 0.75), r, r)
+        pen = QPen(c, s * 0.10)
+        pen.setCapStyle(Qt.RoundCap)
+        p.setPen(pen)
+        p.drawLine(QPointF(s * 0.33, s * 0.36), QPointF(s * 0.67, s * 0.64))
+        p.setPen(Qt.NoPen)
     elif kind == "settings":
         cx = cy = s / 2
         body = s * 0.33          # radius of the gear body

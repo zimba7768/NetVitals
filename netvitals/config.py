@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 APP_NAME = "NetVitals"
-APP_VERSION = "1.5.0"
+APP_VERSION = "1.7.0"
 
 IS_WINDOWS = sys.platform.startswith("win")
 

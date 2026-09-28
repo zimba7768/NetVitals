@@ -33,10 +33,12 @@ SHOTS = [
      "Live throughput and totals for today, this week, month and year."),
     (1, "02-history.png",
      "Hourly, daily, weekly, monthly and yearly history, as charts and tables."),
-    (4, "03-vpn.png",
+    (6, "03-connections.png",
+     "Which application is talking to which host, and whether it went through the tunnel."),
+    (4, "04-vpn.png",
      "VPN traffic measured separately, so tunnelled and direct are never added together."),
-    (3, "04-files.png",
-     "Every file that arrives in your watched folders, with its size and source."),
+    (5, "05-interfaces.png",
+     "Every adapter, what it is counted as, and what it is carrying right now."),
 ]
 
 
@@ -107,6 +109,44 @@ def main() -> int:
         engine.live.append((now - (120 - i), level + burst,
                             level * random.uniform(0.06, 0.2),
                             level * 0.35, level * 0.04))
+
+    # The adapters and connections cards read the *real* machine. For listing
+    # images that would publish whatever this build machine happens to be
+    # running, so both are stood in for. Addresses are RFC 5737 documentation
+    # ranges, never real ones.
+    engine.system.interface_details = lambda: [
+        {"name": "Ethernet", "kind": "direct", "up": True,
+         "ipv4": "192.168.1.24", "speed": 1000,
+         "received": 512_000_000_000, "sent": 48_000_000_000,
+         "down_rate": 1_180_000.0, "up_rate": 214_000.0},
+        {"name": "SurfsharkWireGuard", "kind": "vpn", "up": True,
+         "ipv4": "10.14.0.2", "speed": 0,
+         "received": 210_000_000_000, "sent": 19_000_000_000,
+         "down_rate": 940_000.0, "up_rate": 96_000.0},
+        {"name": "Wi-Fi", "kind": "direct", "up": False, "ipv4": "",
+         "speed": 0, "received": 0, "sent": 0,
+         "down_rate": 0.0, "up_rate": 0.0},
+        {"name": "Loopback Pseudo-Interface 1", "kind": "ignored", "up": True,
+         "ipv4": "127.0.0.1", "speed": 0, "received": 4_200_000,
+         "sent": 4_200_000, "down_rate": 0.0, "up_rate": 0.0},
+    ]
+
+    def demo_connections(**_kwargs):
+        made = []
+        for app, host, port, count, link in (
+                ("chrome.exe", "203.0.113.17", 443, 14, "direct"),
+                ("steam.exe", "203.0.113.64", 27015, 6, "direct"),
+                ("Spotify.exe", "203.0.113.90", 443, 4, "vpn"),
+                ("Discord.exe", "203.0.113.12", 443, 3, "vpn"),
+                ("OneDrive.exe", "203.0.113.41", 443, 2, "direct")):
+            for _ in range(count):
+                made.append({"app": app, "pid": 0, "protocol": "TCP",
+                             "local_port": 0, "remote_ip": host,
+                             "remote_port": port, "status": "ESTABLISHED",
+                             "link": link})
+        return made
+
+    engine.connections.snapshot = demo_connections
 
     window = MainWindow(db, engine, settings)
     window.resize(WIDTH, HEIGHT)

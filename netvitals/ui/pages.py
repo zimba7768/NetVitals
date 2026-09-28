@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QButtonGroup, QCheckBox,
 
 from .. import autostart
 from ..config import APP_VERSION, PROJECT_URL, is_packaged
-from ..collectors.net_system import vpn_active
+from ..collectors.net_system import IGNORED, vpn_active
 from ..db import DIRECT, VPN, floor_day
 from ..units import format_bytes, format_rate, format_when, truncate
 from . import theme
@@ -211,32 +211,30 @@ class DashboardPage(Page):
         columns = QHBoxLayout()
         columns.setSpacing(14)
 
-        apps_card = Card("Top applications today")
-        self.apps_table = make_table(["Application", "Down", "Up", "Share"], 0, {1, 2})
-        self.apps_table.setItemDelegateForColumn(3, ShareBarDelegate(theme.DOWN, self))
-        self.apps_table.setMinimumHeight(200)
-        apps_card.add(self.apps_table, 1)
-        self.apps_note = QLabel("")
-        self.apps_note.setObjectName("CardHint")
-        self.apps_note.setWordWrap(True)
-        self.apps_note.hide()
-        apps_card.add(self.apps_note)
-        self.apps_card = apps_card
-        # A packaged build can never fill this card, so reserving half the row
-        # for it leaves a hole. Give the space to the file log instead; the
-        # Applications page still explains where the figures went.
-        apps_card.setVisible(not is_packaged())
-        columns.addWidget(apps_card, 1)
+        # Adapters and live connections rather than per-application volumes
+        # and downloads. Both work without elevation, so the front page says
+        # the same thing in every build; the file log and the per-application
+        # breakdown keep their own tabs.
+        adapters_card = Card("Adapters", "what is carrying traffic now")
+        self.adapters_table = make_table(
+            ["Adapter", "Counted as", "Down", "Up"], 0, {2, 3})
+        self.adapters_table.setMinimumHeight(200)
+        adapters_card.add(self.adapters_table, 1)
+        columns.addWidget(adapters_card, 1)
 
-        files_card = Card("Recent downloads")
-        self.files_table = make_table(["File", "Size", "When"], 0, {1, 2})
-        self.files_table.setMinimumHeight(200)
-        self.files_table.itemDoubleClicked.connect(self._open_file_row)
-        files_card.add(self.files_table, 1)
-        columns.addWidget(files_card, 1)
+        conns_card = Card("Active connections", "who is talking to whom")
+        self.conns_table = make_table(
+            ["Application", "Connections", "Hosts"], 0, {1, 2})
+        self.conns_table.setMinimumHeight(200)
+        conns_card.add(self.conns_table, 1)
+        self.conns_note = QLabel("")
+        self.conns_note.setObjectName("CardHint")
+        self.conns_note.setWordWrap(True)
+        self.conns_note.hide()
+        conns_card.add(self.conns_note)
+        columns.addWidget(conns_card, 1)
 
         self.content.addLayout(columns, 1)
-        self._file_paths: list[str] = []
 
     def _update_vpn_notice(self) -> None:
         """Explain the small figure on the main dashboard during a VPN session."""
@@ -259,11 +257,6 @@ class DashboardPage(Page):
         if self.settings.get("show_wan_ip", True):
             self.wan_chip.set_checking()
 
-    def _open_file_row(self, item) -> None:
-        row = item.row()
-        if 0 <= row < len(self._file_paths):
-            open_in_explorer(self._file_paths[row])
-
     def refresh_live(self) -> None:
         _, down, up = self.engine.live_series(self.link)
         unit = self.settings.get("units", "auto")
@@ -281,43 +274,62 @@ class DashboardPage(Page):
             d, u = self.db.totals_for_period(key, link=self.link)
             tile.set_values(d, u, unit)
 
-        rows = self.db.apps_for_period("day", limit=8, link=self.link)
-        total = max(1, sum(r["down"] + r["up"] for r in rows))
-        self.apps_table.setRowCount(len(rows))
-        for i, row in enumerate(rows):
-            self.apps_table.setItem(i, 0, cell(truncate(row["app"], 28)))
-            self.apps_table.setItem(i, 1, cell(format_bytes(row["down"], unit),
-                                               Qt.AlignVCenter | Qt.AlignRight, theme.DOWN))
-            self.apps_table.setItem(i, 2, cell(format_bytes(row["up"], unit),
-                                               Qt.AlignVCenter | Qt.AlignRight, theme.UP))
-            share = QTableWidgetItem()
-            share.setData(Qt.UserRole, (row["down"] + row["up"]) / total)
-            self.apps_table.setItem(i, 3, share)
+        self._refresh_adapters(unit)
+        self._refresh_connections()
 
-        if not rows:
-            # Blank column headers above an explanation read as something
-            # broken. With nothing to tabulate, show only the reason.
-            self.apps_note.setText(
-                self.engine.per_app_note()
-                or "No per-application traffic recorded yet today.")
-            self.apps_note.show()
-            self.apps_table.hide()
+    def _refresh_adapters(self, unit: str) -> None:
+        """Adapters carrying traffic, busiest first."""
+        rows = self.engine.system.interface_details()
+        if self.link == VPN:
+            rows = [r for r in rows if r["kind"] == VPN]
         else:
-            self.apps_note.hide()
-            self.apps_table.show()
+            rows = [r for r in rows if r["kind"] != IGNORED]
+        rows = rows[:6]
 
-        files = self.db.recent_files(limit=8, link=self.link)
-        self._file_paths = [f["path"] for f in files]
-        self.files_table.setRowCount(len(files))
-        for i, f in enumerate(files):
-            name_item = cell(truncate(f["name"], 34))
-            name_item.setToolTip(f["path"] + (f"\nFrom {f['source']}" if f["source"] else ""))
-            self.files_table.setItem(i, 0, name_item)
-            self.files_table.setItem(i, 1, cell(format_bytes(f["size"], unit),
-                                                Qt.AlignVCenter | Qt.AlignRight))
-            self.files_table.setItem(i, 2, cell(format_when(f["ts"]),
-                                                Qt.AlignVCenter | Qt.AlignRight,
-                                                theme.TEXT_SECONDARY))
+        self.adapters_table.setRowCount(len(rows))
+        for i, row in enumerate(rows):
+            label = {DIRECT: "Direct", VPN: "VPN tunnel"}.get(
+                row["kind"], row["kind"].title())
+            muted = None if row["up"] else theme.MUTED
+            self.adapters_table.setItem(
+                i, 0, cell(truncate(row["name"], 26), color=muted))
+            self.adapters_table.setItem(i, 1, cell(label, color=muted))
+            self.adapters_table.setItem(i, 2, cell(
+                format_rate(row["down_rate"], unit),
+                Qt.AlignVCenter | Qt.AlignRight,
+                theme.DOWN if row["down_rate"] else theme.MUTED))
+            self.adapters_table.setItem(i, 3, cell(
+                format_rate(row["up_rate"], unit),
+                Qt.AlignVCenter | Qt.AlignRight,
+                theme.UP if row["up_rate"] else theme.MUTED))
+
+    def _refresh_connections(self) -> None:
+        """Which applications are holding connections open, and how many."""
+        try:
+            rows = self.engine.connections.snapshot()
+        except Exception:
+            rows = []
+        if self.link == VPN:
+            rows = [r for r in rows if r["link"] == VPN]
+        summary = self.engine.connections.summary(rows)[:8]
+
+        self.conns_table.setRowCount(len(summary))
+        for i, entry in enumerate(summary):
+            self.conns_table.setItem(i, 0, cell(truncate(entry["app"], 26)))
+            self.conns_table.setItem(i, 1, cell(
+                str(entry["connections"]), Qt.AlignVCenter | Qt.AlignRight))
+            self.conns_table.setItem(i, 2, cell(
+                str(entry["hosts"]), Qt.AlignVCenter | Qt.AlignRight))
+
+        if summary:
+            self.conns_note.hide()
+            self.conns_table.show()
+        else:
+            self.conns_table.hide()
+            self.conns_note.setText(
+                "No connections through the tunnel right now."
+                if self.link == VPN else "Nothing is connected right now.")
+            self.conns_note.show()
 
 
 # ---------------------------------------------------------------------------
@@ -600,6 +612,184 @@ class FilesPage(Page):
 # ---------------------------------------------------------------------------
 # VPN — the same four views, for tunnelled traffic
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# connections
+# ---------------------------------------------------------------------------
+class ConnectionsPage(Page):
+    """Every open connection, and which application owns it.
+
+    A different question from the rest of the application: not how much has
+    moved, but what is talking to what, right now. It needs no elevation, so
+    unlike the per-application byte counts this works in every build.
+
+    Addresses are shown as addresses. Resolving them to host names would mean
+    a DNS lookup per remote host — outbound traffic generated by the tool that
+    promises to make one outbound request.
+    """
+
+    def __init__(self, db, engine, settings, parent=None) -> None:
+        super().__init__(
+            "Connections",
+            "What each application is connected to, right now.",
+            parent)
+        self.db, self.engine, self.settings = db, engine, settings
+
+        card = Card("Open connections", "refreshed every second")
+        self.table = make_table(
+            ["Application", "Protocol", "Remote address", "Port", "Open",
+             "State", "Route"], 0, {3, 4})
+        card.add(self.table, 1)
+        self.content.addWidget(card, 1)
+
+        self.note = QLabel("")
+        self.note.setObjectName("CardHint")
+        self.note.setWordWrap(True)
+        self.content.addWidget(self.note)
+
+    def refresh(self) -> None:
+        try:
+            rows = self.engine.connections.snapshot()
+        except Exception:
+            rows = []
+        groups = self.engine.connections.grouped(rows)
+        self.table.setRowCount(len(groups))
+        tunnelled = sum(1 for r in rows if r["link"] == VPN)
+
+        for i, row in enumerate(groups):
+            route = "VPN tunnel" if row["link"] == VPN else "Direct"
+            self.table.setItem(i, 0, cell(truncate(row["app"], 30)))
+            self.table.setItem(i, 1, cell(row["protocol"]))
+            self.table.setItem(i, 2, cell(row["remote_ip"] or "—", mono=True))
+            self.table.setItem(i, 3, cell(str(row["remote_port"] or ""),
+                                          Qt.AlignVCenter | Qt.AlignRight))
+            self.table.setItem(i, 4, cell(str(row["count"]),
+                                          Qt.AlignVCenter | Qt.AlignRight,
+                                          theme.TEXT_SECONDARY))
+            self.table.setItem(i, 5, cell(row["status"].replace("_", " ").title(),
+                                          color=theme.TEXT_SECONDARY))
+            self.table.setItem(i, 6, cell(
+                route, color=theme.DOWN if row["link"] == VPN else None))
+
+        if not rows:
+            self.note.setText(
+                "Nothing is connected right now. Connections belonging to "
+                "other users' processes are not visible without administrator "
+                "rights, so a quiet list here does not always mean a quiet "
+                "machine.")
+            return
+        summary = (f"{len(rows)} open connection"
+                   f"{'' if len(rows) == 1 else 's'} to "
+                   f"{len(groups)} destination{'' if len(groups) == 1 else 's'}")
+        if tunnelled:
+            summary += f", {tunnelled} through the VPN tunnel"
+        self.note.setText(
+            summary + ".  Addresses are not resolved to host names: that would "
+            "mean a DNS lookup for every remote host, which is outbound "
+            "traffic this application deliberately does not generate.")
+
+    def refresh_live(self) -> None:
+        self.refresh()
+
+
+# ---------------------------------------------------------------------------
+# interfaces
+# ---------------------------------------------------------------------------
+class InterfacesPage(Page):
+    """Every network adapter, and how NetVitals is treating it.
+
+    This is the page that shows the working behind the direct/VPN split. The
+    totals elsewhere depend entirely on which adapter counts as what, and
+    until now that judgement was invisible — if an adapter were misclassified,
+    the only symptom would be figures that looked subtly wrong. Adapters that
+    are ignored or down are listed too, deliberately: leaving them out would
+    make the arithmetic impossible to check.
+    """
+
+    KIND_LABELS = {
+        DIRECT: ("Direct", "counted, and not through a tunnel"),
+        VPN: ("VPN tunnel", "counted separately, on the VPN tab"),
+        IGNORED: ("Ignored", "virtual or loopback — would double-count"),
+    }
+
+    def __init__(self, db, engine, settings, parent=None) -> None:
+        super().__init__(
+            "Interfaces",
+            "Every network adapter on this machine, and how it is counted.",
+            parent)
+        self.db, self.engine, self.settings = db, engine, settings
+
+        card = Card("Adapters", "live rates update every second")
+        self.table = make_table(
+            ["Adapter", "Status", "Counted as", "IPv4", "Down", "Up",
+             "Received", "Sent"], 0, {4, 5, 6, 7})
+        card.add(self.table, 1)
+        self.content.addWidget(card, 1)
+
+        self.note = QLabel("")
+        self.note.setObjectName("CardHint")
+        self.note.setWordWrap(True)
+        self.content.addWidget(self.note)
+
+    # ------------------------------------------------------------------
+    def refresh(self) -> None:
+        unit = self.settings.get("units", "auto")
+        rows = self.engine.system.interface_details()
+        self.table.setRowCount(len(rows))
+
+        counted = tunnels = 0
+        for i, row in enumerate(rows):
+            label, _reason = self.KIND_LABELS.get(
+                row["kind"], (row["kind"].title(), ""))
+            if row["kind"] != IGNORED:
+                counted += 1
+            if row["kind"] == VPN:
+                tunnels += 1
+
+            # A down adapter is not a fault, so it is muted rather than marked.
+            tint = None if row["up"] else theme.MUTED
+            speed = f"{row['speed']} Mbit/s" if row["speed"] else ""
+            status = "Up" if row["up"] else "Down"
+            if row["up"] and speed:
+                status = f"Up · {speed}"
+
+            self.table.setItem(i, 0, cell(truncate(row["name"], 34), color=tint))
+            self.table.setItem(i, 1, cell(status, color=tint))
+            self.table.setItem(i, 2, cell(label, color=tint))
+            self.table.setItem(i, 3, cell(row["ipv4"] or "—", color=tint))
+            self.table.setItem(i, 4, cell(
+                format_rate(row["down_rate"], unit),
+                Qt.AlignVCenter | Qt.AlignRight,
+                theme.DOWN if row["down_rate"] else theme.MUTED))
+            self.table.setItem(i, 5, cell(
+                format_rate(row["up_rate"], unit),
+                Qt.AlignVCenter | Qt.AlignRight,
+                theme.UP if row["up_rate"] else theme.MUTED))
+            self.table.setItem(i, 6, cell(format_bytes(row["received"], unit),
+                                          Qt.AlignVCenter | Qt.AlignRight, tint))
+            self.table.setItem(i, 7, cell(format_bytes(row["sent"], unit),
+                                          Qt.AlignVCenter | Qt.AlignRight, tint))
+
+        if not rows:
+            self.note.setText("No network adapters were reported.")
+            return
+
+        adapters = f"{counted} adapter{'' if counted == 1 else 's'} counted"
+        if tunnels:
+            split = (f", {tunnels} of them a VPN tunnel — measured separately, "
+                     "so tunnelled traffic is never added to direct.")
+        else:
+            split = ", none of them a tunnel, so everything is direct."
+        self.note.setText(
+            adapters + split
+            + "  Received and Sent are lifetime counters kept by Windows "
+              "rather than NetVitals' own totals, so they include traffic "
+              "from before it was installed.")
+
+    def refresh_live(self) -> None:
+        self.refresh()
+
+
 VPN_SECTIONS = [
     ("overview", "Overview"),
     ("history", "History"),

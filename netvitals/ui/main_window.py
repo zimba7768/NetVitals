@@ -12,8 +12,8 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QHBoxLayout, QLabel,
 from ..units import format_rate
 from . import theme
 from .assets import nav_icon
-from .pages import (AppsPage, DashboardPage, FilesPage, HistoryPage,
-                    SettingsPage, VpnPage)
+from .pages import (AppsPage, ConnectionsPage, DashboardPage, FilesPage,
+                    HistoryPage, InterfacesPage, SettingsPage, VpnPage)
 from .tray import Tray, app_icon
 
 NAV = [
@@ -22,6 +22,8 @@ NAV = [
     ("Applications", "applications"),
     ("Files", "files"),
     ("VPN", "vpn"),
+    ("Interfaces", "interfaces"),
+    ("Connections", "connections"),
     ("Settings", "settings"),
 ]
 
@@ -50,9 +52,12 @@ class MainWindow(QWidget):
         self.apps = AppsPage(db, engine, settings)
         self.files = FilesPage(db, engine, settings)
         self.vpn = VpnPage(db, engine, settings)
+        self.interfaces = InterfacesPage(db, engine, settings)
+        self.connections = ConnectionsPage(db, engine, settings)
         self.settings_page = SettingsPage(db, engine, settings)
         for page in (self.dashboard, self.history, self.apps,
-                     self.files, self.vpn, self.settings_page):
+                     self.files, self.vpn, self.interfaces, self.connections,
+                     self.settings_page):
             self.stack.addWidget(page)
         root.addWidget(self.stack, 1)
 
@@ -178,7 +183,8 @@ class MainWindow(QWidget):
 
     def refresh_all(self) -> None:
         for page in (self.dashboard, self.history, self.apps,
-                     self.files, self.vpn, self.settings_page):
+                     self.files, self.vpn, self.interfaces, self.connections,
+                     self.settings_page):
             try:
                 page.refresh()
             except Exception:

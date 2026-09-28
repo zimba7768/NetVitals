@@ -147,26 +147,24 @@ class UiTests(unittest.TestCase):
         engine.etw.start()
         self.assertIn(PROJECT_URL, engine.etw.reason)
 
-    def test_the_dashboard_drops_the_card_it_can_never_fill(self) -> None:
-        # Reserving half the row for per-application traffic leaves a hole in
-        # a build that cannot collect any.
+    def test_the_dashboard_shows_the_same_thing_in_both_builds(self) -> None:
+        # The front page now carries adapters and live connections, both of
+        # which work without elevation. Nothing on it is conditional any more,
+        # which is the point: no hole to explain in the packaged build.
+        for packaged in (True, False):
+            config._packaged = packaged
+            self.addCleanup(setattr, config, "_packaged", None)
+            page = pages.DashboardPage(self.db, self.engine(), self.settings)
+            page.refresh()
+            self.assertTrue(page.adapters_table.isVisibleTo(page), packaged)
+
+    def test_no_connections_says_so_rather_than_showing_an_empty_table(self) -> None:
         PackagedFlag(self, True)
         page = pages.DashboardPage(self.db, self.engine(), self.settings)
-        self.assertFalse(page.apps_card.isVisibleTo(page))
-
-    def test_the_desktop_dashboard_keeps_it(self) -> None:
-        PackagedFlag(self, False)
-        page = pages.DashboardPage(self.db, self.engine(), self.settings)
-        self.assertTrue(page.apps_card.isVisibleTo(page))
-
-    def test_an_empty_table_is_hidden_behind_its_explanation(self) -> None:
-        # Blank column headers above a note read as breakage, not a statement.
-        PackagedFlag(self, False)
-        self.settings.set("track_per_app", False)
-        page = pages.DashboardPage(self.db, self.engine(), self.settings)
+        page.engine.connections.snapshot = lambda **_: []
         page.refresh()
-        self.assertFalse(page.apps_table.isVisibleTo(page))
-        self.assertTrue(page.apps_note.isVisibleTo(page))
+        self.assertFalse(page.conns_table.isVisibleTo(page))
+        self.assertIn("connected", page.conns_note.text())
 
 
 if __name__ == "__main__":

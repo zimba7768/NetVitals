@@ -154,7 +154,7 @@ def main() -> int:
     QCoreApplication.processEvents()
 
     pages = [(0, "dashboard"), (1, "history"), (2, "applications"),
-             (3, "files"), (5, "settings")]
+             (3, "files"), (5, "interfaces"), (6, "connections"), (7, "settings")]
     for index, name in pages:
         window.nav_group.button(index).setChecked(True)
         window.stack.setCurrentIndex(index)

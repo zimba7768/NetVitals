@@ -7,6 +7,7 @@ from collections import deque
 
 from PySide6.QtCore import QObject, Signal
 
+from .collectors.connections import ConnectionCollector
 from .collectors.files import FileTracker
 from .collectors.net_etw import EtwNetCollector
 from .collectors.net_system import (DIRECT, VPN, SystemNetCollector,
@@ -35,6 +36,9 @@ class Engine(QObject):
         self.db = db
         self.settings = settings
         self.system = SystemNetCollector()
+        #: Read on demand by the interface, not sampled on the loop: a
+        #: connection table is a snapshot, not a rate.
+        self.connections = ConnectionCollector()
         self.etw = EtwNetCollector()
         self.files = FileTracker(db, settings, on_new=self._on_file,
                                  link_of=self.current_link)

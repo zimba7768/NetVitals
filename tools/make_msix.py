@@ -6,9 +6,16 @@ Produces everything makeappx needs. The manifest is generated rather than
 checked in so the package version can never drift from APP_VERSION — the same
 drift that already has to be watched between APP_VERSION and the git tag.
 
-The package is deliberately left unsigned. The Store signs what it accepts,
-and signing it yourself risks a publisher mismatch that fails validation;
-locally, ``Add-AppxPackage -AllowUnsigned`` installs it for testing.
+The package is deliberately left unsigned, because that is what the Store
+wants: it signs what it accepts, and signing it yourself risks a publisher
+mismatch that fails validation.
+
+Installing it locally is the opposite case. Windows will not deploy a package
+whose publisher it cannot verify, and ``-AllowUnsigned`` only covers the
+*unsigned namespace* — publishers carrying a particular OID that marks them as
+nobody in particular. A Store identity is deliberately not in it, so testing
+the package on your own machine does need a signature, from a self-signed
+certificate whose subject equals the manifest's Publisher.
 
 Two more things in here are deliberate and easy to get wrong:
 
@@ -195,12 +202,22 @@ def main() -> int:
     print("Now pack it:")
     print(f'  makeappx pack /d "{staging}" /p NetVitals.msix /o')
     print()
-    print("And install it to try it out:")
-    print("  Add-AppxPackage .\\NetVitals.msix -AllowUnsigned")
+    print("Submit that file to the Store as it is — unsigned. The Store signs")
+    print("what it accepts, and signing it yourself risks a publisher")
+    print("mismatch that fails validation.")
     print()
-    print("No signing is needed, and signing would be a mistake: the Store")
-    print("signs submissions with its own certificate, and a package signed")
-    print("with your own can fail validation on a publisher mismatch.")
+    print("To install it HERE, though, it must be signed: Windows will not")
+    print("deploy a package claiming a publisher it cannot verify, and")
+    print("-AllowUnsigned only applies to the special unsigned namespace,")
+    print("which our Store identity is deliberately not in.")
+    print()
+    print("  signtool sign /fd SHA256 /f test-cert.pfx /p <password> NetVitals.msix")
+    print("  Add-AppxPackage .\\NetVitals.msix")
+    print()
+    print("The certificate's subject must equal the manifest's Publisher, and")
+    print("it must be trusted once, from an elevated prompt:")
+    print("  Import-PfxCertificate -FilePath test-cert.pfx "
+          "-CertStoreLocation Cert:\\LocalMachine\\TrustedPeople -Password $pw")
     return 0
 
 

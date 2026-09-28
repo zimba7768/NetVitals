@@ -29,6 +29,14 @@
   when it arrived, and where it came from.
 - **Live throughput** — a two-minute rolling graph, plus a tray icon whose
   arrows brighten with activity.
+- **A Connections page** — which application is talking to which host right
+  now, grouped so a browser's thirty sockets to one CDN read as one line, and
+  labelled with whether each conversation went through the tunnel. Needs no
+  administrator rights, so it works in every build.
+- **An Interfaces page** — every adapter on the machine, whether it is up,
+  what it is counted as, and what it is carrying right now. This is where the
+  direct/VPN split shows its working: if an adapter were classified wrongly,
+  every total would be subtly off with nothing to inspect.
 - **A separate VPN tab** — the same overview, history, applications and files,
   restricted to what actually went through the tunnel. The main pages then show
   direct traffic only, so the two are never added together.
@@ -288,7 +296,7 @@ changes included.
 
 ```bash
 python -m pip install -r requirements.txt
-python -m unittest discover -s tests -v   # 220 tests
+python -m unittest discover -s tests -v   # 245 tests
 python -m pyflakes netvitals main.py tools tests
 ```
 
@@ -358,7 +366,9 @@ netvitals/
     theme.py                colour roles and stylesheet
     assets.py               generated icons and control artwork
     widgets.py              cards, stat tiles, both charts
-    pages.py                the pages, including the VPN tab
+    pages.py                the pages, including VPN, Interfaces, Connections
+    collectors/
+    connections.py          live connection table, per application
     main_window.py          sidebar navigation and refresh clock
     tray.py                 notification-area icon and app icon
 tests/                      storage, link-split, autostart and icon tests
